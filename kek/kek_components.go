@@ -34,7 +34,7 @@ func (c *ZMKComponents) addComponent(componentIndex int, componentValue string, 
 	if err != nil {
 		return errors.New("invalid component")
 	}
-	if !des.VerifyCheckValue(componentCheckValue) {
+	if !cipher.VerifyCheckValue(componentCheckValue) {
 		return errors.New("component check value does not tally")
 	}
 
@@ -49,12 +49,12 @@ func (c *ZMKComponents) merge() (des.DESCipher, error) {
 		zmkBytes, _ = xor.XORBytes(zmkBytes, component)
 	}
 
-	zmkCipher, err := cipher.CreateFromTripleDESKeyBytes(zmkBytes)
+	zmkCipher, err := des.CreateFromTripleDESKeyBytes(zmkBytes)
 	if err != nil {
-		return cipher.DESCipher{}, err
+		return des.DESCipher{}, err
 	}
 	if !zmkCipher.VerifyCheckValue(c.checkValue) {
-		return cipher.DESCipher{}, errors.New("derived ZMK check value does not tally")
+		return des.DESCipher{}, errors.New("derived ZMK check value does not tally")
 	}
 
 	return zmkCipher, nil
