@@ -1,0 +1,41 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.14
+        environment:
+          GO111MODULE: "on"
+    working_directory: /go/src/github.com/transferwise/crypto
+    steps:
+      - checkout
+      - run:
+          name: Dependencies
+          command: go mod download
+      - run:
+          name: Build and run tests
+          command: make all
+  release:
+    docker:
+      - image: circleci/golang:1.14
+        environment:
+          GO111MODULE: "on"
+    working_directory: /go/src/github.com/transferwise/crypto
+    steps:
+      - checkout
+      - run:
+          name: Dependencies
+          command: go mod download
+      - run:
+          name: Buid and run tests
+          command: make all
+workflows:
+  version: 2
+  build_and_publish:
+    jobs:
+      - build
+      - release:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d+\.\d+\.\d+$/
