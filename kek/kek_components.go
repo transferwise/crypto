@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/vault/helper/xor"
-	"github.com/transferwise/cipher/des"
+	"github.com/transferwise/crypto/des"
 )
 
 type ZMKComponents struct {
@@ -25,11 +25,11 @@ func NewZMKComponents(scheme string, keyIndex int, size int, checkValue string) 
 	}
 }
 
-func (c *ZMKComponents) isComplete() bool {
+func (c *ZMKComponents) IsComplete() bool {
 	return len(c.components) == c.size
 }
 
-func (c *ZMKComponents) addComponent(componentIndex int, componentValue string, componentCheckValue string) error {
+func (c *ZMKComponents) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
 	cipher, err := des.CreateFromTripleDESKeyString(componentValue)
 	if err != nil {
 		return errors.New("invalid component")
@@ -43,7 +43,7 @@ func (c *ZMKComponents) addComponent(componentIndex int, componentValue string, 
 	return nil
 }
 
-func (c *ZMKComponents) merge() (des.DESCipher, error) {
+func (c *ZMKComponents) Merge() (des.DESCipher, error) {
 	zmkBytes := make([]byte, 24)
 	for _, component := range c.components {
 		zmkBytes, _ = xor.XORBytes(zmkBytes, component)
