@@ -3,7 +3,6 @@ NAME := crypto
 PKG := github.com/transferwise/$(NAME)
 
 GO_LDFLAGS=-ldflags "-w $(CTIMEVAR)"
-GO_LDFLAGS_STATIC=-ldflags "-w $(CTIMEVAR) -extldflags -static"
 
 GO := go
 
