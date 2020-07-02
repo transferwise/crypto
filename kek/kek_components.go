@@ -7,29 +7,29 @@ import (
 	"github.com/transferwise/crypto/des"
 )
 
-type KEKComponents struct {
-	scheme     string
-	keyIndex   int
-	size       int
-	checkValue string
-	components map[int][]byte
+type Bundle struct {
+	Name     string
+	Index   int
+	Size       int
+	CheckValue string
+	Components map[int][]byte
 }
 
-func NewKEKComponents(scheme string, keyIndex int, size int, checkValue string) *KEKComponents {
-	return &KEKComponents{
-		scheme:     scheme,
-		keyIndex:   keyIndex,
-		size:       size,
-		checkValue: checkValue,
-		components: make(map[int][]byte),
+func NewBundle(scheme string, index int, size int, checkValue string) *Bundle {
+	return &Bundle{
+		Name:     scheme,
+		Index:   index,
+		Size:       size,
+		CheckValue: checkValue,
+		Components: make(map[int][]byte),
 	}
 }
 
-func (c *KEKComponents) IsComplete() bool {
-	return len(c.components) == c.size
+func (b *Bundle) IsComplete() bool {
+	return len(b.Components) == b.Size
 }
 
-func (c *KEKComponents) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
+func (b *Bundle) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
 	cipher, err := des.CreateFromTripleDESKeyString(componentValue)
 	if err != nil {
 		return errors.New("invalid component")
@@ -39,13 +39,13 @@ func (c *KEKComponents) AddComponent(componentIndex int, componentValue string, 
 	}
 
 	// Override the previous value if the same component is imported again
-	c.components[componentIndex] = cipher.KeyBytes
+	b.Components[componentIndex] = cipher.KeyBytes
 	return nil
 }
 
-func (c *KEKComponents) Merge() (des.DESCipher, error) {
+func (b *Bundle) Merge() (des.DESCipher, error) {
 	kekBytes := make([]byte, 24)
-	for _, component := range c.components {
+	for _, component := range b.Components {
 		kekBytes, _ = xor.XORBytes(kekBytes, component)
 	}
 
@@ -53,7 +53,7 @@ func (c *KEKComponents) Merge() (des.DESCipher, error) {
 	if err != nil {
 		return des.DESCipher{}, err
 	}
-	if !kekCipher.VerifyCheckValue(c.checkValue) {
+	if !kekCipher.VerifyCheckValue(b.CheckValue) {
 		return des.DESCipher{}, errors.New("derived key check value does not tally")
 	}
 
