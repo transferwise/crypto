@@ -51,7 +51,7 @@ func TestIsComplete(t *testing.T) {
 
 	kek.AddComponent(3, "20295EBC0B80BF5EF7F78C9125686D3B", "DE5AA9")
 	if !kek.IsComplete() {
-		t.Fatal("isComplete should report false after 3/3 components have been added")
+		t.Fatal("isComplete should report true after 3/3 components have been added")
 	}
 }
 
@@ -68,7 +68,7 @@ func TestMergeResultKeyCheckValueDoesNotTally(t *testing.T) {
 		t.Fatalf("adding component 2 failed with %v", err)
 	}
 
-	err = kek.AddComponent(2, "20295EBC0B80BF5EF7F78C9125686D3B", "DE5AA9")
+	err = kek.AddComponent(3, "20295EBC0B80BF5EF7F78C9125686D3B", "DE5AA9")
 	if err != nil {
 		t.Fatalf("adding component 3 failed with %v", err)
 	}
