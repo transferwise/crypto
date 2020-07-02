@@ -7,7 +7,7 @@ import (
 	"github.com/transferwise/crypto/des"
 )
 
-type ZMKComponents struct {
+type KEKComponents struct {
 	scheme     string
 	keyIndex   int
 	size       int
@@ -15,8 +15,8 @@ type ZMKComponents struct {
 	components map[int][]byte
 }
 
-func NewZMKComponents(scheme string, keyIndex int, size int, checkValue string) *ZMKComponents {
-	return &ZMKComponents{
+func NewKEKComponents(scheme string, keyIndex int, size int, checkValue string) *KEKComponents {
+	return &KEKComponents{
 		scheme:     scheme,
 		keyIndex:   keyIndex,
 		size:       size,
@@ -25,11 +25,11 @@ func NewZMKComponents(scheme string, keyIndex int, size int, checkValue string) 
 	}
 }
 
-func (c *ZMKComponents) IsComplete() bool {
+func (c *KEKComponents) IsComplete() bool {
 	return len(c.components) == c.size
 }
 
-func (c *ZMKComponents) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
+func (c *KEKComponents) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
 	cipher, err := des.CreateFromTripleDESKeyString(componentValue)
 	if err != nil {
 		return errors.New("invalid component")
@@ -43,19 +43,19 @@ func (c *ZMKComponents) AddComponent(componentIndex int, componentValue string, 
 	return nil
 }
 
-func (c *ZMKComponents) Merge() (des.DESCipher, error) {
-	zmkBytes := make([]byte, 24)
+func (c *KEKComponents) Merge() (des.DESCipher, error) {
+	kekBytes := make([]byte, 24)
 	for _, component := range c.components {
-		zmkBytes, _ = xor.XORBytes(zmkBytes, component)
+		kekBytes, _ = xor.XORBytes(kekBytes, component)
 	}
 
-	zmkCipher, err := des.CreateFromTripleDESKeyBytes(zmkBytes)
+	kekCipher, err := des.CreateFromTripleDESKeyBytes(kekBytes)
 	if err != nil {
 		return des.DESCipher{}, err
 	}
-	if !zmkCipher.VerifyCheckValue(c.checkValue) {
-		return des.DESCipher{}, errors.New("derived ZMK check value does not tally")
+	if !kekCipher.VerifyCheckValue(c.checkValue) {
+		return des.DESCipher{}, errors.New("derived key check value does not tally")
 	}
 
-	return zmkCipher, nil
+	return kekCipher, nil
 }
