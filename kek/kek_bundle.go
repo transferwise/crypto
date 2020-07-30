@@ -1,3 +1,4 @@
+// package kek helps construct an 3DES key encryption key from a list of components
 package kek
 
 import (
@@ -7,28 +8,36 @@ import (
 	"github.com/transferwise/crypto/des"
 )
 
+// Bundle is the in memory data structure to help construct a KEK from a list of components
 type Bundle struct {
-	Name     string
-	Index   int
-	Size       int
+	// name of the key
+	Name string
+	// unique index of this key
+	Index int
+	// expected components number
+	Size int
+	// result key check value
 	CheckValue string
+	// imported components index value map
 	Components map[int][]byte
 }
 
-func NewBundle(scheme string, index int, size int, checkValue string) *Bundle {
+func New(name string, index int, size int, checkValue string) *Bundle {
 	return &Bundle{
-		Name:     scheme,
-		Index:   index,
+		Name:       name,
+		Index:      index,
 		Size:       size,
 		CheckValue: checkValue,
 		Components: make(map[int][]byte),
 	}
 }
 
+// IsComplete returns whether all components have been imported
 func (b *Bundle) IsComplete() bool {
 	return len(b.Components) == b.Size
 }
 
+// AddComponent add a new component to the Bundle
 func (b *Bundle) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
 	cipher, err := des.CreateFromTripleDESKeyString(componentValue)
 	if err != nil {
@@ -43,7 +52,8 @@ func (b *Bundle) AddComponent(componentIndex int, componentValue string, compone
 	return nil
 }
 
-func (b *Bundle) Merge() (des.DESCipher, error) {
+// Merge tries to build the result 3DES key from all the imported components
+func (b *Bundle) Merge() (des.Cipher, error) {
 	kekBytes := make([]byte, 24)
 	for _, component := range b.Components {
 		kekBytes, _ = xor.XORBytes(kekBytes, component)
@@ -51,10 +61,10 @@ func (b *Bundle) Merge() (des.DESCipher, error) {
 
 	kekCipher, err := des.CreateFromTripleDESKeyBytes(kekBytes)
 	if err != nil {
-		return des.DESCipher{}, err
+		return des.Cipher{}, err
 	}
 	if !kekCipher.VerifyCheckValue(b.CheckValue) {
-		return des.DESCipher{}, errors.New("derived key check value does not tally")
+		return des.Cipher{}, errors.New("derived key check value does not tally")
 	}
 
 	return kekCipher, nil

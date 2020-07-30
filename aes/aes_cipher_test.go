@@ -8,20 +8,20 @@ import (
 )
 
 func TestNewAESCipher_GenerateRandomKey(t *testing.T) {
-	cipher, err := NewAESCipher(nil)
+	cipher, err := New(nil)
 	if err != nil {
 		t.Errorf("Did not expect an error but got %q", err)
 	}
 
-	if len(cipher.KeyBytes) != aesKeySize {
-		t.Errorf("Expected key size %d but get %d", aesKeySize, len(cipher.KeyBytes))
+	if len(cipher.KeyBytes) != keySize {
+		t.Errorf("Expected key size %d but get %d", keySize, len(cipher.KeyBytes))
 	}
 }
 
 func TestNewAESCipher_UseExistingKey(t *testing.T) {
-	keyBytes, _ := uuid.GenerateRandomBytes(aesKeySize)
+	keyBytes, _ := uuid.GenerateRandomBytes(keySize)
 
-	cipher, err := NewAESCipher(keyBytes)
+	cipher, err := New(keyBytes)
 	if err != nil {
 		t.Errorf("Did not expect an error but got %q", err)
 	}
@@ -32,7 +32,7 @@ func TestNewAESCipher_UseExistingKey(t *testing.T) {
 }
 
 func TestAESCipher_EncryptAndDecrypt(t *testing.T) {
-	cipher, _ := NewAESCipher(nil)
+	cipher, _ := New(nil)
 
 	testDatas := []string{
 		"my secret 1234",
