@@ -7,7 +7,7 @@ import (
 )
 
 func TestAddComponentInvalidValue(t *testing.T) {
-	kek := NewBundle("visa", 1, 3, "2D617C")
+	kek := New("visa", 1, 3, "2D617C")
 
 	err := kek.AddComponent(1, "invalid", "DD1376")
 	if err == nil {
@@ -16,7 +16,7 @@ func TestAddComponentInvalidValue(t *testing.T) {
 }
 
 func TestAddComponentCheckValueNotTally(t *testing.T) {
-	kek := NewBundle("visa", 1, 3, "2D617C")
+	kek := New("visa", 1, 3, "2D617C")
 
 	err := kek.AddComponent(1, "E38FD6D9EF85A892F2FBFDD083A407AE", "DD1376")
 	if err == nil {
@@ -25,7 +25,7 @@ func TestAddComponentCheckValueNotTally(t *testing.T) {
 }
 
 func TestAddComponentSuccess(t *testing.T) {
-	kek := NewBundle("visa", 1, 3, "2D617C")
+	kek := New("visa", 1, 3, "2D617C")
 
 	err := kek.AddComponent(1, "E38FD6D9EF85A892F2FBFDD083A407AE", "DD1375")
 	if err != nil {
@@ -34,7 +34,7 @@ func TestAddComponentSuccess(t *testing.T) {
 }
 
 func TestIsComplete(t *testing.T) {
-	kek := NewBundle("visa", 1, 3, "2D617C")
+	kek := New("visa", 1, 3, "2D617C")
 	if kek.IsComplete() {
 		t.Fatal("isComplete should report false after 0/3 components have been added")
 	}
@@ -56,7 +56,7 @@ func TestIsComplete(t *testing.T) {
 }
 
 func TestMergeResultKeyCheckValueDoesNotTally(t *testing.T) {
-	kek := NewBundle("visa", 1, 3, "123AB")
+	kek := New("visa", 1, 3, "123AB")
 
 	err := kek.AddComponent(1, "E38FD6D9EF85A892F2FBFDD083A407AE", "DD1375")
 	if err != nil {
@@ -80,7 +80,7 @@ func TestMergeResultKeyCheckValueDoesNotTally(t *testing.T) {
 }
 
 func TestMergeResultKeySuccess(t *testing.T) {
-	kek := NewBundle("visa", 1, 3, "2D617C")
+	kek := New("visa", 1, 3, "2D617C")
 
 	err := kek.AddComponent(1, "E38FD6D9EF85A892F2FBFDD083A407AE", "DD1375")
 	if err != nil {

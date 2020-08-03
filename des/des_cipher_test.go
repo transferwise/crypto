@@ -10,7 +10,7 @@ import (
 func TestDESEncryption(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("0123456789ABCDEF")
 	keyBlock, _ := des.NewCipher(keyBytes)
-	cipher := DESCipher{keyBlock, keyBytes}
+	cipher := Cipher{keyBlock, keyBytes}
 
 	testData := map[string]string{
 		"":                                 "",
@@ -37,7 +37,7 @@ func TestDESEncryption(t *testing.T) {
 func TestTripleDESEncryption(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("A1FA4BF45ECDA0C1198CF971365C148CA1FA4BF45ECDA0C1")
 	keyBlock, _ := des.NewTripleDESCipher(keyBytes)
-	cipher := DESCipher{keyBlock, keyBytes}
+	cipher := Cipher{keyBlock, keyBytes}
 
 	testData := map[string]string{
 		"":                                 "",
@@ -64,7 +64,7 @@ func TestTripleDESEncryption(t *testing.T) {
 func TestDESDecryption(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("0123456789ABCDEF")
 	keyBlock, _ := des.NewCipher(keyBytes)
-	cipher := DESCipher{keyBlock, keyBytes}
+	cipher := Cipher{keyBlock, keyBytes}
 
 	testData := map[string]string{
 		"":                                 "",
@@ -91,7 +91,7 @@ func TestDESDecryption(t *testing.T) {
 func TestTripleDESDecryption(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("A1FA4BF45ECDA0C1198CF971365C148CA1FA4BF45ECDA0C1")
 	keyBlock, _ := des.NewTripleDESCipher(keyBytes)
-	cipher := DESCipher{keyBlock, keyBytes}
+	cipher := Cipher{keyBlock, keyBytes}
 
 	testData := map[string]string{
 		"":                                 "",
@@ -118,7 +118,7 @@ func TestTripleDESDecryption(t *testing.T) {
 func TestDESCheckValueVerification(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("0123456789ABCDEF")
 	keyBlock, _ := des.NewCipher(keyBytes)
-	cipher := DESCipher{keyBlock, keyBytes}
+	cipher := Cipher{keyBlock, keyBytes}
 
 	if !cipher.VerifyCheckValue("D5D44F") {
 		t.Error("expect checkValue to be valid")
@@ -132,7 +132,7 @@ func TestDESCheckValueVerification(t *testing.T) {
 func TestTripleDESCheckValueVerification(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("F94AC55104B0E5532D0A61D2D2C6C655F94AC55104B0E553")
 	keyBlock, _ := des.NewTripleDESCipher(keyBytes)
-	cipher := DESCipher{keyBlock, keyBytes}
+	cipher := Cipher{keyBlock, keyBytes}
 
 	if !cipher.VerifyCheckValue("6FAAD3") {
 		t.Error("expect checkValue to be valid")

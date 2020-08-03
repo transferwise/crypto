@@ -1,3 +1,4 @@
+// Package aes provides wrapper methods on top of the AES GCM cipher for our own usage
 package aes
 
 import (
@@ -9,59 +10,63 @@ import (
 	"github.com/hashicorp/go-uuid"
 )
 
-const aesKeySize = 32
+const keySize = 32
 
-type AESCipher struct {
+// Cipher is wrapper of the AES GCM cipher and stores the raw key bytes
+type Cipher struct {
 	gcm      cipher.AEAD
 	KeyBytes []byte
 }
 
-func NewAESCipher(keyBytes []byte) (AESCipher, error) {
+// New constructs a new AES GCM cipher using the raw key bytes provided, it will generate
+// a random key if the input raw key bytes is nil
+func New(keyBytes []byte) (Cipher, error) {
+	var err error
+
 	if keyBytes == nil {
-		var err error
-		if keyBytes, err = uuid.GenerateRandomBytes(aesKeySize); err != nil {
-			return AESCipher{}, errors.New("fail to generate a new random AES key")
+		if keyBytes, err = uuid.GenerateRandomBytes(keySize); err != nil {
+			return Cipher{}, errors.New("fail to generate random key bytes")
 		}
 	}
 
-	// Using AES-256 GCM mode
-	aesCipher, aesError := aes.NewCipher(keyBytes)
-	if aesError != nil {
-		return AESCipher{}, errors.New("fail to generate AES cipher")
+	aesCipher, err := aes.NewCipher(keyBytes)
+	if err != nil {
+		return Cipher{}, errors.New("fail to create AES cipher")
 	}
 
-	gcmCipher, gcmError := cipher.NewGCM(aesCipher)
-	if gcmError != nil {
-		return AESCipher{}, errors.New("fail to use GCM mode")
+	// Using GCM mode
+	gcmCipher, err := cipher.NewGCM(aesCipher)
+	if err != nil {
+		return Cipher{}, errors.New("fail to use GCM mode")
 	}
 
-	return AESCipher{gcmCipher, keyBytes}, nil
+	return Cipher{gcmCipher, keyBytes}, nil
 }
 
-func (cipher *AESCipher) Encrypt(src string) (string, error) {
+func (cipher *Cipher) Encrypt(src string) (string, error) {
 	textBytes := []byte(src)
 
-	nonce, nonceError := uuid.GenerateRandomBytes(cipher.gcm.NonceSize())
-	if nonceError != nil {
-		return "", errors.New("fail to generate a random nonce")
+	nonce, err := uuid.GenerateRandomBytes(cipher.gcm.NonceSize())
+	if err != nil {
+		return "", errors.New("fail to generate nonce")
 	}
 
 	encryptedBytes := cipher.gcm.Seal(nonce, nonce, textBytes, nil)
 	return base64.StdEncoding.EncodeToString(encryptedBytes), nil
 }
 
-func (cipher *AESCipher) Decrypt(src string) (string, error) {
-	textBytes, decodeError := base64.StdEncoding.DecodeString(src)
-	if decodeError != nil {
-		return "", decodeError
+func (cipher *Cipher) Decrypt(src string) (string, error) {
+	textBytes, err := base64.StdEncoding.DecodeString(src)
+	if err != nil {
+		return "", err
 	}
 
 	nonceSize := cipher.gcm.NonceSize()
 	nonce, text := textBytes[:nonceSize], textBytes[nonceSize:]
 
-	decryptedBytes, decryptionError := cipher.gcm.Open(nil, nonce, text, nil)
-	if decryptionError != nil {
-		return "", decryptionError
+	decryptedBytes, err := cipher.gcm.Open(nil, nonce, text, nil)
+	if err != nil {
+		return "", err
 	}
 	return string(decryptedBytes), nil
 }
