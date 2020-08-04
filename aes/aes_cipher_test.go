@@ -7,19 +7,8 @@ import (
 	"github.com/hashicorp/go-uuid"
 )
 
-func TestNewAESCipher_GenerateRandomKey(t *testing.T) {
-	cipher, err := New(nil)
-	if err != nil {
-		t.Errorf("Did not expect an error but got %q", err)
-	}
-
-	if len(cipher.KeyBytes) != keySize {
-		t.Errorf("Expected key size %d but get %d", keySize, len(cipher.KeyBytes))
-	}
-}
-
 func TestNewAESCipher_UseExistingKey(t *testing.T) {
-	keyBytes, _ := uuid.GenerateRandomBytes(keySize)
+	keyBytes, _ := uuid.GenerateRandomBytes(32)
 
 	cipher, err := New(keyBytes)
 	if err != nil {
@@ -32,7 +21,8 @@ func TestNewAESCipher_UseExistingKey(t *testing.T) {
 }
 
 func TestAESCipher_EncryptAndDecrypt(t *testing.T) {
-	cipher, _ := New(nil)
+	keyBytes, _ := uuid.GenerateRandomBytes(32)
+	cipher, _ := New(keyBytes)
 
 	testDatas := []string{
 		"my secret 1234",

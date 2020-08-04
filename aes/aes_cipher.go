@@ -10,63 +10,59 @@ import (
 	"github.com/hashicorp/go-uuid"
 )
 
-const keySize = 32
-
 // Cipher is wrapper of the AES GCM cipher and stores the raw key bytes
 type Cipher struct {
 	gcm      cipher.AEAD
 	KeyBytes []byte
 }
 
-// New constructs a new AES GCM cipher using the raw key bytes provided, it will generate
-// a random key if the input raw key bytes is nil
+// New constructs a new AES GCM cipher using the raw key bytes provided, the raw bytes must be
+// either 16, 24, or 32 bytes
 func New(keyBytes []byte) (Cipher, error) {
 	var err error
 
-	if keyBytes == nil {
-		if keyBytes, err = uuid.GenerateRandomBytes(keySize); err != nil {
-			return Cipher{}, errors.New("fail to generate random key bytes")
-		}
-	}
-
+	// Setup the cipher
 	aesCipher, err := aes.NewCipher(keyBytes)
 	if err != nil {
-		return Cipher{}, errors.New("fail to create AES cipher")
+		return Cipher{}, err
 	}
 
-	// Using GCM mode
+	// Setup the GCM
 	gcmCipher, err := cipher.NewGCM(aesCipher)
 	if err != nil {
-		return Cipher{}, errors.New("fail to use GCM mode")
+		return Cipher{}, err
 	}
 
 	return Cipher{gcmCipher, keyBytes}, nil
 }
 
-func (cipher *Cipher) Encrypt(src string) (string, error) {
-	textBytes := []byte(src)
+// Encrypt takes the UTF-8 encoded plaintext and output Base64 encoded cipher text
+func (cipher *Cipher) Encrypt(plaintext string) (string, error) {
+	plainBytes := []byte(plaintext)
 
 	nonce, err := uuid.GenerateRandomBytes(cipher.gcm.NonceSize())
 	if err != nil {
 		return "", errors.New("fail to generate nonce")
 	}
 
-	encryptedBytes := cipher.gcm.Seal(nonce, nonce, textBytes, nil)
-	return base64.StdEncoding.EncodeToString(encryptedBytes), nil
+	// Prefix nonce to the cipher text
+	cipherBytes := cipher.gcm.Seal(nonce, nonce, plainBytes, nil)
+	return base64.StdEncoding.EncodeToString(cipherBytes), nil
 }
 
-func (cipher *Cipher) Decrypt(src string) (string, error) {
-	textBytes, err := base64.StdEncoding.DecodeString(src)
+// Decrypt takes the Base64 encoded cipher text and output UTF-8 encoded plaintext
+func (cipher *Cipher) Decrypt(ciphertext string) (string, error) {
+	cipherBytes, err := base64.StdEncoding.DecodeString(ciphertext)
 	if err != nil {
 		return "", err
 	}
 
 	nonceSize := cipher.gcm.NonceSize()
-	nonce, text := textBytes[:nonceSize], textBytes[nonceSize:]
+	nonce, cipherBytesWithoutNonce := cipherBytes[:nonceSize], cipherBytes[nonceSize:]
 
-	decryptedBytes, err := cipher.gcm.Open(nil, nonce, text, nil)
+	plainBytes, err := cipher.gcm.Open(nil, nonce, cipherBytesWithoutNonce, nil)
 	if err != nil {
 		return "", err
 	}
-	return string(decryptedBytes), nil
+	return string(plainBytes), nil
 }
