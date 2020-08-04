@@ -16,53 +16,53 @@ type Cipher struct {
 	KeyBytes []byte
 }
 
-func (cipher *Cipher) Encrypt(src []byte) ([]byte, error) {
+func (cipher *Cipher) Encrypt(plainBytes []byte) ([]byte, error) {
 	blockSize := cipher.KeyBlock.BlockSize()
-	if len(src)%blockSize != 0 {
-		return nil, fmt.Errorf("input length %d is not a multiplier of block size %d", len(src), blockSize)
+	if len(plainBytes)%blockSize != 0 {
+		return nil, fmt.Errorf("input length %d is not a multiplier of block size %d", len(plainBytes), blockSize)
 	}
 
-	dst := make([]byte, len(src))
-	for start := 0; start+blockSize <= len(src); start += blockSize {
-		cipher.KeyBlock.Encrypt(dst[start:], src[start:])
+	cipherBytes := make([]byte, len(plainBytes))
+	for start := 0; start+blockSize <= len(plainBytes); start += blockSize {
+		cipher.KeyBlock.Encrypt(cipherBytes[start:], plainBytes[start:])
 	}
-	return dst, nil
+	return cipherBytes, nil
 }
 
-func (cipher *Cipher) EncryptHex(src string) ([]byte, error) {
-	bytes, err := hex.DecodeString(src)
+func (cipher *Cipher) EncryptHex(plaintext string) ([]byte, error) {
+	plainBytes, err := hex.DecodeString(plaintext)
 	if err != nil {
 		return nil, errors.New("input is not in correct hex format")
 	}
-	return cipher.Encrypt(bytes)
+	return cipher.Encrypt(plainBytes)
 }
 
-func (cipher *Cipher) Decrypt(src []byte) ([]byte, error) {
+func (cipher *Cipher) Decrypt(cipherBytes []byte) ([]byte, error) {
 	blockSize := cipher.KeyBlock.BlockSize()
-	if len(src)%blockSize != 0 {
-		return nil, fmt.Errorf("input length %d is not a multiplier of block size %d", len(src), blockSize)
+	if len(cipherBytes)%blockSize != 0 {
+		return nil, fmt.Errorf("input length %d is not a multiplier of block size %d", len(cipherBytes), blockSize)
 	}
 
-	dst := make([]byte, len(src))
-	for start := 0; start+blockSize <= len(src); start += blockSize {
-		cipher.KeyBlock.Decrypt(dst[start:], src[start:])
+	plainBytes := make([]byte, len(cipherBytes))
+	for start := 0; start+blockSize <= len(cipherBytes); start += blockSize {
+		cipher.KeyBlock.Decrypt(plainBytes[start:], cipherBytes[start:])
 	}
-	return dst, nil
+	return plainBytes, nil
 }
 
-func (cipher *Cipher) DecryptHex(src string) ([]byte, error) {
-	bytes, err := hex.DecodeString(src)
+func (cipher *Cipher) DecryptHex(ciphertext string) ([]byte, error) {
+	cipherBytes, err := hex.DecodeString(ciphertext)
 	if err != nil {
 		return nil, errors.New("input is not in correct hex format")
 	}
-	return cipher.Decrypt(bytes)
+	return cipher.Decrypt(cipherBytes)
 }
 
 func (cipher *Cipher) VerifyCheckValue(checkValue string) bool {
-	encryptedBytes, err := cipher.Encrypt(keyCheckValuePlainText8Bytes)
+	cipherBytes, err := cipher.Encrypt(keyCheckValuePlainText8Bytes)
 	if err != nil {
 		return false
 	}
-	derivedCheckValue := hex.EncodeToString(encryptedBytes[:3])
+	derivedCheckValue := hex.EncodeToString(cipherBytes[:3])
 	return strings.EqualFold(derivedCheckValue, checkValue)
 }
