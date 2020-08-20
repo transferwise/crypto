@@ -4,7 +4,6 @@ package aes
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/base64"
 	"errors"
 
 	"github.com/hashicorp/go-uuid"
@@ -36,33 +35,29 @@ func New(keyBytes []byte) (Cipher, error) {
 	return Cipher{gcmCipher, keyBytes}, nil
 }
 
-// Encrypt takes the UTF-8 encoded plaintext and output Base64 encoded cipher text
-func (cipher *Cipher) Encrypt(plaintext string) (string, error) {
-	plainBytes := []byte(plaintext)
-
+// Encrypt takes plain bytes and output cipher bytes, the nonce will be prefixed to
+// cipher bytes if prefixNonce is true.
+func (cipher *Cipher) Encrypt(plainBytes []byte, prefixNonce bool) ([]byte, []byte, error) {
 	nonce, err := uuid.GenerateRandomBytes(cipher.gcm.NonceSize())
 	if err != nil {
-		return "", errors.New("fail to generate nonce")
+		return nil, nil, errors.New("fail to generate nonce")
 	}
 
-	// Prefix nonce to the cipher text
-	cipherBytes := cipher.gcm.Seal(nonce, nonce, plainBytes, nil)
-	return base64.StdEncoding.EncodeToString(cipherBytes), nil
+	cipherBytes := cipher.gcm.Seal(nil, nonce, plainBytes, nil)
+	if prefixNonce {
+		cipherBytes = append(nonce, cipherBytes...)
+	}
+
+	return cipherBytes, nonce, nil
 }
 
-// Decrypt takes the Base64 encoded cipher text and output UTF-8 encoded plaintext
-func (cipher *Cipher) Decrypt(ciphertext string) (string, error) {
-	cipherBytes, err := base64.StdEncoding.DecodeString(ciphertext)
-	if err != nil {
-		return "", err
+// Decrypt takes cipher bytes and output plain bytes, it is assumed the nonce is prefixed
+// to cipher bytes if its value is not being provided
+func (cipher *Cipher) Decrypt(cipherBytes []byte, nonce []byte) ([]byte, error) {
+	if nonce == nil {
+		nonceSize := cipher.gcm.NonceSize()
+		nonce, cipherBytes = cipherBytes[:nonceSize], cipherBytes[nonceSize:]
 	}
 
-	nonceSize := cipher.gcm.NonceSize()
-	nonce, cipherBytesWithoutNonce := cipherBytes[:nonceSize], cipherBytes[nonceSize:]
-
-	plainBytes, err := cipher.gcm.Open(nil, nonce, cipherBytesWithoutNonce, nil)
-	if err != nil {
-		return "", err
-	}
-	return string(plainBytes), nil
+	return cipher.gcm.Open(nil, nonce, cipherBytes, nil)
 }
