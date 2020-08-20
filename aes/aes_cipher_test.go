@@ -20,7 +20,7 @@ func TestNewAESCipher_UseExistingKey(t *testing.T) {
 	}
 }
 
-func TestAESCipher_EncryptAndDecrypt(t *testing.T) {
+func TestAESCipher_EncryptAndDecryptNotPrefixNonce(t *testing.T) {
 	keyBytes, _ := uuid.GenerateRandomBytes(32)
 	cipher, _ := New(keyBytes)
 
@@ -30,18 +30,44 @@ func TestAESCipher_EncryptAndDecrypt(t *testing.T) {
 	}
 
 	for _, testData := range testDatas {
-		encryptedData, encryptionError := cipher.Encrypt(testData)
-		if encryptionError != nil {
-			t.Errorf("Did not expect an encryption error but got %q", encryptionError)
+		cipherBytes, nonce, err := cipher.Encrypt([]byte(testData), false)
+		if err != nil {
+			t.Errorf("Did not expect an encryption error but got %q", err)
 		}
 
-		decryptedData, decryptionError := cipher.Decrypt(encryptedData)
-		if decryptionError != nil {
-			t.Errorf("Did not expect a decryption error but got %q", decryptionError)
+		plainBytes, err := cipher.Decrypt(cipherBytes, nonce)
+		if err != nil {
+			t.Errorf("Did not expect a decryption error but got %q", err)
 		}
 
-		if testData != decryptedData {
-			t.Errorf("Expected %s but get %s", testData, decryptedData)
+		if testData != string(plainBytes) {
+			t.Errorf("Expected %s but get %s", testData, string(plainBytes))
+		}
+	}
+}
+
+func TestAESCipher_EncryptAndDecryptPrefixNonce(t *testing.T) {
+	keyBytes, _ := uuid.GenerateRandomBytes(32)
+	cipher, _ := New(keyBytes)
+
+	testDatas := []string{
+		"my secret 1234",
+		"123456789",
+	}
+
+	for _, testData := range testDatas {
+		cipherBytes, _, err := cipher.Encrypt([]byte(testData), true)
+		if err != nil {
+			t.Errorf("Did not expect an encryption error but got %q", err)
+		}
+
+		plainBytes, err := cipher.Decrypt(cipherBytes, nil)
+		if err != nil {
+			t.Errorf("Did not expect a decryption error but got %q", err)
+		}
+
+		if testData != string(plainBytes) {
+			t.Errorf("Expected %s but get %s", testData, string(plainBytes))
 		}
 	}
 }
