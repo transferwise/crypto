@@ -13,3 +13,6 @@ and [manufacturing plugin](https://github.com/transferwise/vault-plugin-secrets-
 ### KEK Bundle
 Helper class to construct a 3DES key encryption key from a list of components. 
 
+### RSA
+Common RSA operations for plugins to use. Targeting use-cases such as key extraction.
+
