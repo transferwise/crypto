@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 )
@@ -51,6 +52,12 @@ func GenerateRSAKeyPair(bitSize int) (*pem.Block, *pem.Block, error) {
 // EvalHash generates a SHA256 hash key for the provided pem block
 func EvalHash(pem *pem.Block) [32]byte {
 	return sha256.Sum256(pem.Bytes)
+}
+
+// EvalHash generates a SHA256 hash key as string for the provided pem block
+func EvalHashToBase64(pem *pem.Block) string {
+	b := EvalHash(pem)
+	return base64.StdEncoding.EncodeToString(b[:])
 }
 
 // EncodePem converts a pem block to a slice of bytes, ready to be serialized
