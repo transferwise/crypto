@@ -12,13 +12,16 @@
 package rsa
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"testing"
 )
 
 func TestRSAGeneration(t *testing.T) {
-	_, _, err := GenerateRSAKeyPair(4096)
+	_, err := GenerateRSAKeyPair()
 
 	if err != nil {
 		t.Fatal("Failed to generate a RSA key pair ", err)
@@ -26,53 +29,75 @@ func TestRSAGeneration(t *testing.T) {
 }
 
 func TestEvalHash(t *testing.T) {
-	priv, err := readKey("testdata/private.pem")
-	if err != nil {
-		t.Fatal("Failed to read private key", err)
-	}
-
-	//A silly test that verifies the hash remains the same
-	h := EvalHash(priv)
-	e, err := EncodePem(priv)
-	if err != nil {
-		t.Fail()
-	} else {
-		priv, _ = DecodePem(e)
-		if EvalHash(priv) != h {
-			t.Fail()
-		}
-	}
 
 	pub, err := readKey("testdata/public.pem")
 	if err != nil {
 		t.Fatal("Failed to read public key", err)
 	}
 
-	h = EvalHash(pub)
-	e, err = EncodePem(pub)
+	hash, err := EvalHash(pub)
+
+	fmt.Println(hash)
+	if err != nil || hash != "BTx5GBFv1S8yMqehO5TvvgoKk5om7FcFIkSJlMtXGiw=" {
+		t.Fail()
+	}
+}
+
+func TestEncodeDecode(t *testing.T) {
+	s, err := readKey("testdata/public.pem")
 	if err != nil {
-		t.Fail()
-	} else {
-		pub, _ = DecodePem(e)
-		if EvalHash(pub) != h {
-			t.Fail()
-		}
+		t.Fatal("Failed to read public key", err)
+	}
+	pub, err := Encode(s)
+	if err != nil {
+		t.Fatal("Failed to encode public key")
+	}
+	new, err := Decode(pub)
+	if err != nil {
+		t.Fatal("Failed to decode public key")
+	}
+	if new.N.Cmp(s.N) != 0 {
+		t.Fatal("Encoded and decoded keys don't match")
 	}
 }
 
-func TestDecodePemNegative(t *testing.T) {
-	_, err := DecodePem([]byte("invalid key"))
-	if err == nil {
-		t.Fail()
+func TestEcryptDecrypt(t *testing.T) {
+	priv, err := GenerateRSAKeyPair()
+	if err != nil {
+		t.Fatal("Failed to generate key pair")
+	}
+
+	text := "Secret text"
+	enc, err := Encrypt(&priv.PublicKey, []byte(text))
+	if err != nil {
+		t.Fatal("Failed to encrypt text")
+	}
+	dec, err := Decrypt(priv, enc)
+	if err != nil {
+		t.Fatal("Failed to decrypt text")
+	}
+
+	if string(dec) != text {
+		t.Fatal("Decrypted text does not match")
 	}
 }
 
-func readKey(filename string) (*pem.Block, error) {
-	priv, err := ioutil.ReadFile(filename)
+func readKey(filename string) (*rsa.PublicKey, error) {
+	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	//Decode the PEM
-	block, _ := pem.Decode(priv)
-	return block, nil
+
+	block, _ := pem.Decode(f)
+
+	parsedKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	pubKey, ok := parsedKey.(*rsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("Parsed key not of the RSA")
+	}
+	return pubKey, nil
 }
