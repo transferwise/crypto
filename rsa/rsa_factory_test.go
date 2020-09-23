@@ -30,21 +30,20 @@ func TestRSAGeneration(t *testing.T) {
 
 func TestEvalHash(t *testing.T) {
 
-	pub, err := readKey("testdata/public.pem")
+	pub, err := readPublicKey("testdata/public.pem")
 	if err != nil {
 		t.Fatal("Failed to read public key", err)
 	}
 
 	hash, err := EvalHash(pub)
 
-	fmt.Println(hash)
 	if err != nil || hash != "BTx5GBFv1S8yMqehO5TvvgoKk5om7FcFIkSJlMtXGiw=" {
 		t.Fail()
 	}
 }
 
 func TestEncodeDecode(t *testing.T) {
-	s, err := readKey("testdata/public.pem")
+	s, err := readPublicKey("testdata/public.pem")
 	if err != nil {
 		t.Fatal("Failed to read public key", err)
 	}
@@ -82,7 +81,7 @@ func TestEcryptDecrypt(t *testing.T) {
 	}
 }
 
-func readKey(filename string) (*rsa.PublicKey, error) {
+func readPublicKey(filename string) (*rsa.PublicKey, error) {
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
