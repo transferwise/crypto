@@ -35,9 +35,8 @@ func TestEvalHash(t *testing.T) {
 		t.Fatal("Failed to read public key", err)
 	}
 
-	hash, err := EvalHash(pub)
-
-	if err != nil || hash != "BTx5GBFv1S8yMqehO5TvvgoKk5om7FcFIkSJlMtXGiw=" {
+	hash := EvalHash(pub)
+	if hash != "BTx5GBFv1S8yMqehO5TvvgoKk5om7FcFIkSJlMtXGiw=" {
 		t.Fail()
 	}
 }
@@ -47,10 +46,7 @@ func TestEncodeDecode(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to read public key", err)
 	}
-	pub, err := Encode(s)
-	if err != nil {
-		t.Fatal("Failed to encode public key")
-	}
+	pub := Encode(s)
 	new, err := Decode(pub)
 	if err != nil {
 		t.Fatal("Failed to decode public key")

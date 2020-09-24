@@ -26,18 +26,18 @@ func GenerateRSAKeyPair() (*rsa.PrivateKey, error) {
 }
 
 // EvalHash generates a SHA256 hash as string for the provided pem block
-func EvalHash(p *rsa.PublicKey) (string, error) {
+func EvalHash(p *rsa.PublicKey) string {
 	b := x509.MarshalPKCS1PublicKey(p)
 	h := sha256.Sum256(b)
 	b64 := base64.StdEncoding.EncodeToString(h[:])
-	return b64, nil
+	return b64
 }
 
 // Encode converts a rsa.PublicKey to a base64 encoded pkcs1 string
-func Encode(p *rsa.PublicKey) (string, error) {
+func Encode(p *rsa.PublicKey) string {
 	b := x509.MarshalPKCS1PublicKey(p)
 	s := base64.StdEncoding.EncodeToString(b)
-	return s, nil
+	return s
 }
 
 // Decode converts a base64 encoded pkcs1 string to a *rsa.PublicKey
