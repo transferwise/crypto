@@ -1,5 +1,4 @@
-This repo provides a list of utility modules that are currently used by [payment plugin](https://github.com/transferwise/vault-plugin-secrets-payment) 
-and [manufacturing plugin](https://github.com/transferwise/vault-plugin-secrets-manufacturing).
+This repo provides a list of utility modules for common crypto operations.
 
 ### AES
 * factory methods to construct an AES-GCM cipher with a 96-bit nonce from the input raw key bytes
