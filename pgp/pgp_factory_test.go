@@ -12,7 +12,6 @@
 package pgp
 
 import (
-	"fmt"
 	"io/ioutil"
 	"testing"
 )
@@ -28,7 +27,6 @@ func TestEvalHash(t *testing.T) {
 	}
 
 	hash := pgp.EvalHash()
-	fmt.Println(hash)
 	if hash != "JBo9isgzOkJqpjr1mFNpvnjWnIBzs8UKB3ZpoJJ3ITo=" {
 		t.Fail()
 	}
