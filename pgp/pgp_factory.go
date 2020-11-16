@@ -12,8 +12,7 @@
 package pgp
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/ProtonMail/gopenpgp/v2/helper"
 )
 
@@ -24,8 +23,11 @@ type ArmoredKeyPair struct {
 
 // EvalHash generates a SHA256 hash as string for the public key
 func (pgp *ArmoredKeyPair) EvalHash() string {
-	h := sha256.Sum256([]byte(pgp.PublicKey))
-	return base64.StdEncoding.EncodeToString(h[:])
+	publicKeyObj, err := crypto.NewKeyFromArmored(pgp.PublicKey)
+	if err != nil {
+		return ""
+	}
+	return publicKeyObj.GetFingerprint()
 }
 
 // Encrypt encrypts a message with the given public key and output an armored PGP message

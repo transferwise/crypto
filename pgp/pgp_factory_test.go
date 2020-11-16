@@ -27,8 +27,8 @@ func TestEvalHash(t *testing.T) {
 	}
 
 	hash := pgp.EvalHash()
-	if hash != "JBo9isgzOkJqpjr1mFNpvnjWnIBzs8UKB3ZpoJJ3ITo=" {
-		t.Fail()
+	if hash != "e14e2ac4eb71a116767bccd45b2ed52e758b1c41" {
+		t.Fatalf("hash does not match: %s", hash)
 	}
 }
 
