@@ -140,6 +140,16 @@ func TestDESCheckValueVerification(t *testing.T) {
 	}
 }
 
+func TestDESCheckValue(t *testing.T) {
+	keyBytes, _ := hex.DecodeString("0123456789ABCDEF")
+	keyBlock, _ := des.NewCipher(keyBytes)
+	cipher := Cipher{keyBlock, keyBytes}
+
+	if !strings.EqualFold(cipher.CheckValue(), "D5D44F") {
+		t.Error("expect checkValue to be valid")
+	}
+}
+
 func TestTripleDESCheckValueVerification(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("F94AC55104B0E5532D0A61D2D2C6C655F94AC55104B0E553")
 	keyBlock, _ := des.NewTripleDESCipher(keyBytes)
@@ -151,5 +161,15 @@ func TestTripleDESCheckValueVerification(t *testing.T) {
 
 	if cipher.VerifyCheckValue("6FAAD4") {
 		t.Error("expect checkValue to be invalid")
+	}
+}
+
+func TestTripleDESCheckValue(t *testing.T) {
+	keyBytes, _ := hex.DecodeString("F94AC55104B0E5532D0A61D2D2C6C655F94AC55104B0E553")
+	keyBlock, _ := des.NewTripleDESCipher(keyBytes)
+	cipher := Cipher{keyBlock, keyBytes}
+
+	if !strings.EqualFold(cipher.CheckValue(), "6FAAD3") {
+		t.Error("expect checkValue to be valid")
 	}
 }

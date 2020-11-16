@@ -77,3 +77,11 @@ func (cipher *Cipher) VerifyCheckValue(checkValue string) bool {
 	derivedCheckValue := hex.EncodeToString(cipherBytes[:3])
 	return strings.EqualFold(derivedCheckValue, checkValue)
 }
+
+func (cipher *Cipher) CheckValue() string {
+	cipherBytes, err := cipher.Encrypt(keyCheckValuePlainText8Bytes)
+	if err != nil {
+		return ""
+	}
+	return hex.EncodeToString(cipherBytes[:3])
+}
