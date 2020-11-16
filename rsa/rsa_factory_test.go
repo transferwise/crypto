@@ -56,7 +56,7 @@ func TestEncodeDecode(t *testing.T) {
 	}
 }
 
-func TestEcryptDecrypt(t *testing.T) {
+func TestEncryptDecrypt(t *testing.T) {
 	priv, err := GenerateRSAKeyPair()
 	if err != nil {
 		t.Fatal("Failed to generate key pair")
