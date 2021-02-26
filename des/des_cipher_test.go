@@ -159,6 +159,10 @@ func TestTripleDESCheckValueVerification(t *testing.T) {
 		t.Error("expect checkValue to be valid")
 	}
 
+	if !cipher.VerifyCheckValue("6FAA") {
+		t.Error("expect checkValue to be valid")
+	}
+
 	if cipher.VerifyCheckValue("6FAAD4") {
 		t.Error("expect checkValue to be invalid")
 	}
