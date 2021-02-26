@@ -19,6 +19,11 @@ import (
 	"strings"
 )
 
+const (
+	checkValueDefaultBytes = 3
+	checkValueMinimumBytes = 2
+)
+
 var keyCheckValuePlainText8Bytes = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 
 // Cipher is wrapper of the DES or 3DES cipher and stores the raw key bytes
@@ -70,11 +75,16 @@ func (cipher *Cipher) DecryptHex(ciphertext string) ([]byte, error) {
 }
 
 func (cipher *Cipher) VerifyCheckValue(checkValue string) bool {
+	checkValueBytes := len(checkValue) / 2
+	if checkValueBytes < checkValueMinimumBytes || checkValueBytes > len(keyCheckValuePlainText8Bytes) {
+		return false
+	}
+
 	cipherBytes, err := cipher.Encrypt(keyCheckValuePlainText8Bytes)
 	if err != nil {
 		return false
 	}
-	derivedCheckValue := hex.EncodeToString(cipherBytes[:3])
+	derivedCheckValue := hex.EncodeToString(cipherBytes[:checkValueBytes])
 	return strings.EqualFold(derivedCheckValue, checkValue)
 }
 
@@ -83,5 +93,5 @@ func (cipher *Cipher) CheckValue() string {
 	if err != nil {
 		return ""
 	}
-	return hex.EncodeToString(cipherBytes[:3])
+	return hex.EncodeToString(cipherBytes[:checkValueDefaultBytes])
 }

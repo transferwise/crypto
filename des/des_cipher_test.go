@@ -162,6 +162,14 @@ func TestTripleDESCheckValueVerification(t *testing.T) {
 	if cipher.VerifyCheckValue("6FAAD4") {
 		t.Error("expect checkValue to be invalid")
 	}
+
+	if cipher.VerifyCheckValue("6F") {
+		t.Error("expect checkValue to be invalid if it is below the minimum required length")
+	}
+
+	if cipher.VerifyCheckValue("F94AC55104B0E5532D0A61D2D2C6C655F94AC55104B0E553") {
+		t.Error("expect checkValue to be invalid if it is above the max allowed length")
+	}
 }
 
 func TestTripleDESCheckValue(t *testing.T) {
