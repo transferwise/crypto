@@ -31,6 +31,8 @@ type Bundle struct {
 	CheckValue string
 	// imported components index value map
 	Components map[int][]byte
+	// free text description of the key
+	Description string
 }
 
 func New(name string, index int, size int, checkValue string) *Bundle {
@@ -79,4 +81,12 @@ func (b *Bundle) Merge() (des.Cipher, error) {
 	}
 
 	return kekCipher, nil
+}
+
+// Protects the description from being erased. Since a bundle is constructed of
+// multiple requests, this method makes it mroe convenient
+func (b *Bundle) SetDescription(desc string) {
+	if len(b.Description) < len(desc) {
+		b.Description = desc
+	}
 }

@@ -117,3 +117,13 @@ func TestMergeResultKeySuccess(t *testing.T) {
 		t.Fatalf("Expected %s but got back %s", expectedKey, hex.EncodeToString(resultKey.KeyBytes))
 	}
 }
+
+func TestOverwriteDescription(t *testing.T) {
+	kek := New("visa", 1, 3, "2D617C")
+	kek.SetDescription("desc")
+	kek.SetDescription("")
+
+	if kek.Description != "desc" {
+		t.Fatalf("Expected non empty description")
+	}
+}
