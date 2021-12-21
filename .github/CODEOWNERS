@@ -1,6 +1,2 @@
 # Default ownership
-*              @apac-plastic-devs
-
-# Plastic platform ownership
-/.circleci/    @transferwise/plastic-platform
-/.github/      @transferwise/plastic-platform
+*              @transferwise/plastic-issuance-service-owners

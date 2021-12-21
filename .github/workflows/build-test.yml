@@ -1,0 +1,24 @@
+name: "Build & Test"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
+
+jobs:
+
+  build-and-test:
+    name: "Build & Test"
+    runs-on: [self-hosted, production, medium]
+    container: docker.tw.ee/actions_golang1_16
+
+    steps:
+      - name: "Checkout git repo"
+        uses: actions/checkout@v2
+      - name: "Dependencies"
+        run: go mod download
+      - name: "Build and run tests"
+        run: make all
