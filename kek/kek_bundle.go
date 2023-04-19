@@ -15,7 +15,7 @@ package kek
 import (
 	"errors"
 
-	"github.com/hashicorp/vault/helper/xor"
+	"github.com/hashicorp/vault/sdk/helper/xor"
 	"github.com/transferwise/crypto/des"
 )
 

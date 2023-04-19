@@ -52,3 +52,8 @@ staticcheck: ## Verifies `staticcheck` passes.
 clean: ## Cleanup any build binaries or packages.
 	@echo "+ $@"
 	$(RM) $(NAME)
+
+.PHONY: go
+go:
+	go mod tidy
+	go mod verify
