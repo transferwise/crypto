@@ -43,10 +43,13 @@ type Bundle struct {
 	Components map[int][]byte
 }
 
+// New creates a new KEK Bundle for TripleDES
+// Deprecated: Use NewWithKeyType instead
 func New(name string, index int, size int, checkValue string) *Bundle {
 	return NewWithKeyType(name, index, size, checkValue, KeyTypeTripleDES)
 }
 
+// NewWithKeyType creates a new KEK Bundle with the specified key type
 func NewWithKeyType(name string, index int, size int, checkValue string, keyType KeyType) *Bundle {
 	return &Bundle{
 		Name:       name,
@@ -95,21 +98,11 @@ func (b *Bundle) Merge() (des.Cipher, error) {
 	if b.KeyType == KeyTypeAES {
 		return des.Cipher{}, errors.New("Merge() does not support AES bundles, use MergeKey() instead")
 	}
-
-	kekBytes := make([]byte, 24)
-	for _, component := range b.Components {
-		kekBytes, _ = xor.XORBytes(kekBytes, component)
-	}
-
-	kekCipher, err := des.CreateFromTripleDESKeyBytes(kekBytes)
+	result, err := b.mergeTripleDES()
 	if err != nil {
 		return des.Cipher{}, err
 	}
-	if !kekCipher.VerifyCheckValue(b.CheckValue) {
-		return des.Cipher{}, errors.New("derived key check value does not tally")
-	}
-
-	return kekCipher, nil
+	return *result.(*des.Cipher), nil
 }
 
 // MergeKey tries to build the result key from all the imported components.
