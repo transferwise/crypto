@@ -9,14 +9,24 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
-// package kek helps construct an 3DES key encryption key from a list of components
+// package kek helps construct a key encryption key from a list of components
 package kek
 
 import (
 	"errors"
 
 	"github.com/hashicorp/vault/sdk/helper/xor"
+	"github.com/transferwise/crypto/aes"
 	"github.com/transferwise/crypto/des"
+)
+
+// Algorithm determines the cipher type and KCV method used by the Bundle.
+type Algorithm string
+
+const (
+	TripleDES Algorithm = "3DES"
+	AES_ECB   Algorithm = "AES_ECB"
+	AES_CMAC  Algorithm = "AES_CMAC"
 )
 
 // Bundle is the in memory data structure to help construct a KEK from a list of components
@@ -31,15 +41,18 @@ type Bundle struct {
 	CheckValue string
 	// imported components index value map
 	Components map[int][]byte
+	// algorithm for this KEK
+	Algorithm Algorithm
 }
 
-func New(name string, index int, size int, checkValue string) *Bundle {
+func New(name string, index int, size int, checkValue string, algorithm Algorithm) *Bundle {
 	return &Bundle{
 		Name:       name,
 		Index:      index,
 		Size:       size,
 		CheckValue: checkValue,
 		Components: make(map[int][]byte),
+		Algorithm:  algorithm,
 	}
 }
 
@@ -50,6 +63,17 @@ func (b *Bundle) IsComplete() bool {
 
 // AddComponent add a new component to the Bundle
 func (b *Bundle) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
+	switch b.Algorithm {
+	case AES_ECB:
+		return b.addAESComponent(componentIndex, componentValue, componentCheckValue, aes.KCVMethodECB)
+	case AES_CMAC:
+		return b.addAESComponent(componentIndex, componentValue, componentCheckValue, aes.KCVMethodCMAC)
+	default:
+		return b.addTripleDESComponent(componentIndex, componentValue, componentCheckValue)
+	}
+}
+
+func (b *Bundle) addTripleDESComponent(componentIndex int, componentValue string, componentCheckValue string) error {
 	cipher, err := des.CreateFromTripleDESKeyString(componentValue)
 	if err != nil {
 		return errors.New("invalid component")
@@ -57,26 +81,64 @@ func (b *Bundle) AddComponent(componentIndex int, componentValue string, compone
 	if !cipher.VerifyCheckValue(componentCheckValue) {
 		return errors.New("component check value does not tally")
 	}
-
-	// Override the previous value if the same component is imported again
 	b.Components[componentIndex] = cipher.KeyBytes
 	return nil
 }
 
-// Merge tries to build the result 3DES key from all the imported components
-func (b *Bundle) Merge() (des.Cipher, error) {
-	kekBytes := make([]byte, 24)
+func (b *Bundle) addAESComponent(componentIndex int, componentValue string, componentCheckValue string, kcvMethod aes.KCVMethod) error {
+	key, err := aes.CreateKeyFromString(componentValue, kcvMethod)
+	if err != nil {
+		return errors.New("invalid component")
+	}
+	if !key.VerifyCheckValue(componentCheckValue) {
+		return errors.New("component check value does not tally")
+	}
+	b.Components[componentIndex] = key.KeyBytes
+	return nil
+}
+
+// Merge tries to build the result key from all the imported components
+func (b *Bundle) Merge() (KeyCipher, error) {
+	kekBytes := make([]byte, b.keySize())
 	for _, component := range b.Components {
 		kekBytes, _ = xor.XORBytes(kekBytes, component)
 	}
 
+	switch b.Algorithm {
+	case AES_ECB:
+		return b.mergeAES(kekBytes, aes.KCVMethodECB)
+	case AES_CMAC:
+		return b.mergeAES(kekBytes, aes.KCVMethodCMAC)
+	default:
+		return b.mergeTripleDES(kekBytes)
+	}
+}
+
+func (b *Bundle) mergeTripleDES(kekBytes []byte) (KeyCipher, error) {
 	kekCipher, err := des.CreateFromTripleDESKeyBytes(kekBytes)
 	if err != nil {
-		return des.Cipher{}, err
+		return nil, err
 	}
 	if !kekCipher.VerifyCheckValue(b.CheckValue) {
-		return des.Cipher{}, errors.New("derived key check value does not tally")
+		return nil, errors.New("derived key check value does not tally")
 	}
+	return &kekCipher, nil
+}
 
-	return kekCipher, nil
+func (b *Bundle) mergeAES(kekBytes []byte, kcvMethod aes.KCVMethod) (KeyCipher, error) {
+	kekKey, err := aes.CreateKeyFromBytes(kekBytes, kcvMethod)
+	if err != nil {
+		return nil, err
+	}
+	if !kekKey.VerifyCheckValue(b.CheckValue) {
+		return nil, errors.New("derived key check value does not tally")
+	}
+	return &kekKey, nil
+}
+
+func (b *Bundle) keySize() int {
+	for _, v := range b.Components {
+		return len(v)
+	}
+	return 24
 }
