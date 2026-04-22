@@ -120,10 +120,10 @@ func TestMergeResultKeySuccess(t *testing.T) {
 	}
 }
 
-// --- AES ECB KCV tests ---
+// --- AES tests ---
 
-func TestAESECBAddComponentInvalidValue(t *testing.T) {
-	kek := New("test", 1, 3, "4DDC67", AES_ECB)
+func TestAESAddComponentInvalidValue(t *testing.T) {
+	kek := New("test", 1, 3, "4DDC67", AES)
 
 	err := kek.AddComponent(1, "invalid", "40ED1B")
 	if err == nil {
@@ -131,8 +131,8 @@ func TestAESECBAddComponentInvalidValue(t *testing.T) {
 	}
 }
 
-func TestAESECBAddComponentCheckValueNotTally(t *testing.T) {
-	kek := New("test", 1, 3, "4DDC67", AES_ECB)
+func TestAESAddComponentCheckValueNotTally(t *testing.T) {
+	kek := New("test", 1, 3, "4DDC67", AES)
 
 	err := kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "000000")
 	if err == nil {
@@ -140,17 +140,17 @@ func TestAESECBAddComponentCheckValueNotTally(t *testing.T) {
 	}
 }
 
-func TestAESECBAddComponentSuccess(t *testing.T) {
-	kek := New("test", 1, 3, "4DDC67", AES_ECB)
+func TestAESAddComponentSuccess(t *testing.T) {
+	kek := New("test", 1, 3, "4DDC67", AES)
 
 	err := kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "40ED1B")
 	if err != nil {
-		t.Fatalf("adding AES ECB component failed with %v", err)
+		t.Fatalf("adding AES component failed with %v", err)
 	}
 }
 
-func TestAESECBMergeCheckValueDoesNotTally(t *testing.T) {
-	kek := New("test", 1, 3, "000000", AES_ECB)
+func TestAESMergeCheckValueDoesNotTally(t *testing.T) {
+	kek := New("test", 1, 3, "000000", AES)
 
 	kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "40ED1B")
 	kek.AddComponent(2, "11223344556677889900AABBCCDDEEFF", "DD566B")
@@ -162,8 +162,8 @@ func TestAESECBMergeCheckValueDoesNotTally(t *testing.T) {
 	}
 }
 
-func TestAESECBMergeSuccess(t *testing.T) {
-	kek := New("test", 1, 3, "4DDC67", AES_ECB)
+func TestAESMergeSuccess(t *testing.T) {
+	kek := New("test", 1, 3, "4DDC67", AES)
 
 	err := kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "40ED1B")
 	if err != nil {
@@ -182,71 +182,10 @@ func TestAESECBMergeSuccess(t *testing.T) {
 
 	resultKey, err := kek.Merge()
 	if err != nil {
-		t.Fatalf("AES ECB merge failed with %v", err)
+		t.Fatalf("AES merge failed with %v", err)
 	}
 	expectedKey := "4E4C4A08C6C442804EE65B7FD7F7537F"
 	if !strings.EqualFold(expectedKey, hex.EncodeToString(resultKey.GetKeyBytes())) {
 		t.Fatalf("Expected %s but got back %s", expectedKey, hex.EncodeToString(resultKey.GetKeyBytes()))
-	}
-}
-
-// --- AES CMAC KCV tests ---
-
-func TestAESCMACAddComponentCheckValueNotTally(t *testing.T) {
-	kek := New("test", 1, 3, "CB8700", AES_CMAC)
-
-	err := kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "000000")
-	if err == nil {
-		t.Fatal("should have failed if the CMAC component check value does not tally")
-	}
-}
-
-func TestAESCMACAddComponentSuccess(t *testing.T) {
-	kek := New("test", 1, 3, "CB8700", AES_CMAC)
-
-	err := kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "9AD77D")
-	if err != nil {
-		t.Fatalf("adding AES CMAC component failed with %v", err)
-	}
-}
-
-func TestAESCMACMergeSuccess(t *testing.T) {
-	kek := New("test", 1, 3, "CB8700", AES_CMAC)
-
-	err := kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "9AD77D")
-	if err != nil {
-		t.Fatalf("adding component 1 failed with %v", err)
-	}
-
-	err = kek.AddComponent(2, "11223344556677889900AABBCCDDEEFF", "894726")
-	if err != nil {
-		t.Fatalf("adding component 2 failed with %v", err)
-	}
-
-	err = kek.AddComponent(3, "FEDCBA9876543210FEDCBA9876543210", "CB53D6")
-	if err != nil {
-		t.Fatalf("adding component 3 failed with %v", err)
-	}
-
-	resultKey, err := kek.Merge()
-	if err != nil {
-		t.Fatalf("AES CMAC merge failed with %v", err)
-	}
-	expectedKey := "4E4C4A08C6C442804EE65B7FD7F7537F"
-	if !strings.EqualFold(expectedKey, hex.EncodeToString(resultKey.GetKeyBytes())) {
-		t.Fatalf("Expected %s but got back %s", expectedKey, hex.EncodeToString(resultKey.GetKeyBytes()))
-	}
-}
-
-func TestAESCMACMergeCheckValueDoesNotTally(t *testing.T) {
-	kek := New("test", 1, 3, "000000", AES_CMAC)
-
-	kek.AddComponent(1, "A1B2C3D4E5F60718293A4B5C6D7E8F90", "9AD77D")
-	kek.AddComponent(2, "11223344556677889900AABBCCDDEEFF", "894726")
-	kek.AddComponent(3, "FEDCBA9876543210FEDCBA9876543210", "CB53D6")
-
-	_, err := kek.Merge()
-	if err == nil {
-		t.Fatal("should have failed if the CMAC result key check value does not tally")
 	}
 }

@@ -61,13 +61,7 @@ func (k *Key) GetKeyBytes() []byte {
 
 func (k *Key) computeKCV() []byte {
 	zeros := make([]byte, k.keyBlock.BlockSize())
-
-	switch k.kcvMethod {
-	case KCVMethodCMAC:
-		return cmac(k.keyBlock, zeros)
-	default:
-		encrypted := make([]byte, k.keyBlock.BlockSize())
-		k.keyBlock.Encrypt(encrypted, zeros)
-		return encrypted
-	}
+	encrypted := make([]byte, k.keyBlock.BlockSize())
+	k.keyBlock.Encrypt(encrypted, zeros)
+	return encrypted
 }

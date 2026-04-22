@@ -12,11 +12,20 @@
 package aes
 
 import (
+	"encoding/hex"
 	"strings"
 	"testing"
 )
 
 const testKeyHex = "702E73B9230ECADBB8F120BDE3870493"
+
+func mustDecodeHex(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
 
 func TestECBCheckValue(t *testing.T) {
 	key, err := CreateKeyFromString(testKeyHex, KCVMethodECB)
@@ -41,32 +50,6 @@ func TestECBVerifyCheckValue(t *testing.T) {
 	}
 	if key.VerifyCheckValue("000000") {
 		t.Fatal("ECB KCV verification should fail with wrong value")
-	}
-}
-
-func TestCMACCheckValue(t *testing.T) {
-	key, err := CreateKeyFromString(testKeyHex, KCVMethodCMAC)
-	if err != nil {
-		t.Fatalf("failed to create key: %v", err)
-	}
-
-	expected := "107f4d"
-	if !strings.EqualFold(key.CheckValue(), expected) {
-		t.Fatalf("expected CMAC KCV %s but got %s", expected, key.CheckValue())
-	}
-}
-
-func TestCMACVerifyCheckValue(t *testing.T) {
-	key, err := CreateKeyFromString(testKeyHex, KCVMethodCMAC)
-	if err != nil {
-		t.Fatalf("failed to create key: %v", err)
-	}
-
-	if !key.VerifyCheckValue("107F4D") {
-		t.Fatal("CMAC KCV verification should pass")
-	}
-	if key.VerifyCheckValue("A3DB34") {
-		t.Fatal("CMAC KCV verification should fail with ECB value")
 	}
 }
 

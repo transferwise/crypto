@@ -25,8 +25,7 @@ type Algorithm string
 
 const (
 	TripleDES Algorithm = "3DES"
-	AES_ECB   Algorithm = "AES_ECB"
-	AES_CMAC  Algorithm = "AES_CMAC"
+	AES       Algorithm = "AES"
 )
 
 // Bundle is the in memory data structure to help construct a KEK from a list of components
@@ -64,10 +63,8 @@ func (b *Bundle) IsComplete() bool {
 // AddComponent add a new component to the Bundle
 func (b *Bundle) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
 	switch b.Algorithm {
-	case AES_ECB:
+	case AES:
 		return b.addAESComponent(componentIndex, componentValue, componentCheckValue, aes.KCVMethodECB)
-	case AES_CMAC:
-		return b.addAESComponent(componentIndex, componentValue, componentCheckValue, aes.KCVMethodCMAC)
 	default:
 		return b.addTripleDESComponent(componentIndex, componentValue, componentCheckValue)
 	}
@@ -105,10 +102,8 @@ func (b *Bundle) Merge() (KeyCipher, error) {
 	}
 
 	switch b.Algorithm {
-	case AES_ECB:
+	case AES:
 		return b.mergeAES(kekBytes, aes.KCVMethodECB)
-	case AES_CMAC:
-		return b.mergeAES(kekBytes, aes.KCVMethodCMAC)
 	default:
 		return b.mergeTripleDES(kekBytes)
 	}
