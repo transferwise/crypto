@@ -9,7 +9,7 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
-// package kek helps construct an 3DES key encryption key from a list of components
+// package kek helps construct a key encryption key from a list of components
 package kek
 
 import (
@@ -24,7 +24,7 @@ type KeyType string
 
 const (
 	KeyTypeTripleDES KeyType = "TripleDES"
-	KeyTypeAES  KeyType = "AES"
+	KeyTypeAES       KeyType = "AES"
 )
 
 // Bundle is the in memory data structure to help construct a KEK from a list of components
@@ -37,7 +37,7 @@ type Bundle struct {
 	Size int
 	// result key check value
 	CheckValue string
-	// key type (3DES or AES)
+	// key type (TripleDES or AES)
 	KeyType KeyType
 	// imported components index value map
 	Components map[int][]byte
@@ -88,7 +88,9 @@ func (b *Bundle) AddComponent(componentIndex int, componentValue string, compone
 	return nil
 }
 
-// Merge tries to build the result 3DES key from all the imported components
+// Merge tries to build the result TripleDES key from all the imported components
+//
+// Deprecated: Use MergeKey instead as it supports both TripleDES and AES keys.
 func (b *Bundle) Merge() (des.Cipher, error) {
 	if b.KeyType == KeyTypeAES {
 		return des.Cipher{}, errors.New("Merge() does not support AES bundles, use MergeKey() instead")
@@ -111,17 +113,17 @@ func (b *Bundle) Merge() (des.Cipher, error) {
 }
 
 // MergeKey tries to build the result key from all the imported components.
-// It supports both 3DES and AES key types.
+// It supports both TripleDES and AES key types.
 func (b *Bundle) MergeKey() (KeyCipher, error) {
 	switch b.KeyType {
 	case KeyTypeAES:
 		return b.mergeAES()
 	default:
-		return b.merge3DES()
+		return b.mergeTripleDES()
 	}
 }
 
-func (b *Bundle) merge3DES() (KeyCipher, error) {
+func (b *Bundle) mergeTripleDES() (KeyCipher, error) {
 	kekBytes := make([]byte, 24)
 	for _, component := range b.Components {
 		kekBytes, _ = xor.XORBytes(kekBytes, component)

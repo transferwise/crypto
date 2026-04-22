@@ -33,6 +33,8 @@ type Cipher struct {
 	KeyBytes []byte
 }
 
+// New creates a new AES cipher from the given key bytes.
+// Deprecated: Use CreateFromKeyBytes instead.
 func New(keyBytes []byte) (Cipher, error) {
 	return CreateFromKeyBytes(keyBytes)
 }
