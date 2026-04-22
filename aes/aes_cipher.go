@@ -33,7 +33,7 @@ type Cipher struct {
 	KeyBytes []byte
 }
 
-// New creates a new AES cipher from the given key bytes.
+// CreateFromKeyBytes constructs a new AES GCM cipher using the raw key bytes provided, the raw bytes must be either 16, 24, or 32 bytes.
 // Deprecated: Use CreateFromKeyBytes instead.
 func New(keyBytes []byte) (Cipher, error) {
 	return CreateFromKeyBytes(keyBytes)
