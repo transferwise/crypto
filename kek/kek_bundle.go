@@ -23,7 +23,7 @@ import (
 type KeyType string
 
 const (
-	KeyType3DES KeyType = "3DES"
+	KeyTypeTripleDES KeyType = "TripleDES"
 	KeyTypeAES  KeyType = "AES"
 )
 
@@ -44,7 +44,7 @@ type Bundle struct {
 }
 
 func New(name string, index int, size int, checkValue string) *Bundle {
-	return NewWithKeyType(name, index, size, checkValue, KeyType3DES)
+	return NewWithKeyType(name, index, size, checkValue, KeyTypeTripleDES)
 }
 
 func NewWithKeyType(name string, index int, size int, checkValue string, keyType KeyType) *Bundle {
