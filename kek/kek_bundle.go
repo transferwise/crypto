@@ -16,7 +16,15 @@ import (
 	"errors"
 
 	"github.com/hashicorp/vault/sdk/helper/xor"
+	"github.com/transferwise/crypto/aes"
 	"github.com/transferwise/crypto/des"
+)
+
+type KeyType string
+
+const (
+	KeyType3DES KeyType = "3DES"
+	KeyTypeAES  KeyType = "AES"
 )
 
 // Bundle is the in memory data structure to help construct a KEK from a list of components
@@ -29,16 +37,23 @@ type Bundle struct {
 	Size int
 	// result key check value
 	CheckValue string
+	// key type (3DES or AES)
+	KeyType KeyType
 	// imported components index value map
 	Components map[int][]byte
 }
 
 func New(name string, index int, size int, checkValue string) *Bundle {
+	return NewWithKeyType(name, index, size, checkValue, KeyType3DES)
+}
+
+func NewWithKeyType(name string, index int, size int, checkValue string, keyType KeyType) *Bundle {
 	return &Bundle{
 		Name:       name,
 		Index:      index,
 		Size:       size,
 		CheckValue: checkValue,
+		KeyType:    keyType,
 		Components: make(map[int][]byte),
 	}
 }
@@ -50,21 +65,35 @@ func (b *Bundle) IsComplete() bool {
 
 // AddComponent add a new component to the Bundle
 func (b *Bundle) AddComponent(componentIndex int, componentValue string, componentCheckValue string) error {
-	cipher, err := des.CreateFromTripleDESKeyString(componentValue)
-	if err != nil {
-		return errors.New("invalid component")
+	switch b.KeyType {
+	case KeyTypeAES:
+		cipher, err := aes.CreateFromKeyString(componentValue)
+		if err != nil {
+			return errors.New("invalid component")
+		}
+		if !cipher.VerifyCheckValue(componentCheckValue) {
+			return errors.New("component check value does not tally")
+		}
+		b.Components[componentIndex] = cipher.KeyBytes
+	default:
+		cipher, err := des.CreateFromTripleDESKeyString(componentValue)
+		if err != nil {
+			return errors.New("invalid component")
+		}
+		if !cipher.VerifyCheckValue(componentCheckValue) {
+			return errors.New("component check value does not tally")
+		}
+		b.Components[componentIndex] = cipher.KeyBytes
 	}
-	if !cipher.VerifyCheckValue(componentCheckValue) {
-		return errors.New("component check value does not tally")
-	}
-
-	// Override the previous value if the same component is imported again
-	b.Components[componentIndex] = cipher.KeyBytes
 	return nil
 }
 
 // Merge tries to build the result 3DES key from all the imported components
 func (b *Bundle) Merge() (des.Cipher, error) {
+	if b.KeyType == KeyTypeAES {
+		return des.Cipher{}, errors.New("Merge() does not support AES bundles, use MergeKey() instead")
+	}
+
 	kekBytes := make([]byte, 24)
 	for _, component := range b.Components {
 		kekBytes, _ = xor.XORBytes(kekBytes, component)
@@ -79,4 +108,58 @@ func (b *Bundle) Merge() (des.Cipher, error) {
 	}
 
 	return kekCipher, nil
+}
+
+// MergeKey tries to build the result key from all the imported components.
+// It supports both 3DES and AES key types.
+func (b *Bundle) MergeKey() (KeyCipher, error) {
+	switch b.KeyType {
+	case KeyTypeAES:
+		return b.mergeAES()
+	default:
+		return b.merge3DES()
+	}
+}
+
+func (b *Bundle) merge3DES() (KeyCipher, error) {
+	kekBytes := make([]byte, 24)
+	for _, component := range b.Components {
+		kekBytes, _ = xor.XORBytes(kekBytes, component)
+	}
+
+	kekCipher, err := des.CreateFromTripleDESKeyBytes(kekBytes)
+	if err != nil {
+		return nil, err
+	}
+	if !kekCipher.VerifyCheckValue(b.CheckValue) {
+		return nil, errors.New("derived key check value does not tally")
+	}
+
+	return &kekCipher, nil
+}
+
+func (b *Bundle) mergeAES() (KeyCipher, error) {
+	var keyLen int
+	for _, component := range b.Components {
+		keyLen = len(component)
+		break
+	}
+	if keyLen == 0 {
+		return nil, errors.New("no components to merge")
+	}
+
+	kekBytes := make([]byte, keyLen)
+	for _, component := range b.Components {
+		kekBytes, _ = xor.XORBytes(kekBytes, component)
+	}
+
+	kekCipher, err := aes.CreateFromKeyBytes(kekBytes)
+	if err != nil {
+		return nil, err
+	}
+	if !kekCipher.VerifyCheckValue(b.CheckValue) {
+		return nil, errors.New("derived key check value does not tally")
+	}
+
+	return &kekCipher, nil
 }
