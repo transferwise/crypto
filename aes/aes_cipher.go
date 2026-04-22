@@ -33,24 +33,8 @@ type Cipher struct {
 	KeyBytes []byte
 }
 
-// New constructs a new AES GCM cipher using the raw key bytes provided, the raw bytes must be
-// either 16, 24, or 32 bytes
 func New(keyBytes []byte) (Cipher, error) {
-	var err error
-
-	// Setup the cipher
-	aesCipher, err := aes.NewCipher(keyBytes)
-	if err != nil {
-		return Cipher{}, err
-	}
-
-	// Setup the GCM
-	gcmCipher, err := cipher.NewGCM(aesCipher)
-	if err != nil {
-		return Cipher{}, err
-	}
-
-	return Cipher{gcmCipher, keyBytes}, nil
+	return CreateFromKeyBytes(keyBytes)
 }
 
 // Encrypt takes plain bytes and output cipher bytes, the nonce will be prefixed to
