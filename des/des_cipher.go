@@ -88,6 +88,10 @@ func (cipher *Cipher) VerifyCheckValue(checkValue string) bool {
 	return strings.EqualFold(derivedCheckValue, checkValue)
 }
 
+func (cipher *Cipher) GetKeyBytes() []byte {
+	return cipher.KeyBytes
+}
+
 func (cipher *Cipher) CheckValue() string {
 	cipherBytes, err := cipher.Encrypt(keyCheckValuePlainText8Bytes)
 	if err != nil {
