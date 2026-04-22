@@ -33,7 +33,8 @@ type Cipher struct {
 	KeyBytes []byte
 }
 
-// CreateFromKeyBytes constructs a new AES GCM cipher using the raw key bytes provided, the raw bytes must be either 16, 24, or 32 bytes.
+// New constructs a new AES GCM cipher using the raw key bytes provided; the raw bytes must be either 16, 24, or 32 bytes.
+//
 // Deprecated: Use CreateFromKeyBytes instead.
 func New(keyBytes []byte) (Cipher, error) {
 	return CreateFromKeyBytes(keyBytes)
@@ -77,5 +78,14 @@ func (c *Cipher) CheckValue() string {
 }
 
 func (c *Cipher) VerifyCheckValue(checkValue string) bool {
-	return strings.EqualFold(c.CheckValue(), checkValue)
+	if checkValue == "" {
+		return false
+	}
+
+	derivedCheckValue := c.CheckValue()
+	if derivedCheckValue == "" {
+		return false
+	}
+
+	return strings.EqualFold(derivedCheckValue, checkValue)
 }

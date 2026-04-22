@@ -14,6 +14,7 @@ package kek
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/vault/sdk/helper/xor"
 	"github.com/transferwise/crypto/aes"
@@ -78,7 +79,7 @@ func (b *Bundle) AddComponent(componentIndex int, componentValue string, compone
 			return errors.New("component check value does not tally")
 		}
 		b.Components[componentIndex] = cipher.KeyBytes
-	default:
+	case KeyTypeTripleDES:
 		cipher, err := des.CreateFromTripleDESKeyString(componentValue)
 		if err != nil {
 			return errors.New("invalid component")
@@ -87,6 +88,8 @@ func (b *Bundle) AddComponent(componentIndex int, componentValue string, compone
 			return errors.New("component check value does not tally")
 		}
 		b.Components[componentIndex] = cipher.KeyBytes
+	default:
+		return fmt.Errorf("unsupported key type: %s", b.KeyType)
 	}
 	return nil
 }
@@ -120,8 +123,11 @@ func (b *Bundle) MergeTripleDESKey() (des.Cipher, error) {
 func (b *Bundle) MergeAESKey() (aes.Cipher, error) {
 	var keyLen int
 	for _, component := range b.Components {
-		keyLen = len(component)
-		break
+		if keyLen == 0 {
+			keyLen = len(component)
+		} else if len(component) != keyLen {
+			return aes.Cipher{}, fmt.Errorf("component length mismatch: expected %d bytes but got %d", keyLen, len(component))
+		}
 	}
 	if keyLen == 0 {
 		return aes.Cipher{}, errors.New("no components to merge")
@@ -129,7 +135,11 @@ func (b *Bundle) MergeAESKey() (aes.Cipher, error) {
 
 	kekBytes := make([]byte, keyLen)
 	for _, component := range b.Components {
-		kekBytes, _ = xor.XORBytes(kekBytes, component)
+		var err error
+		kekBytes, err = xor.XORBytes(kekBytes, component)
+		if err != nil {
+			return aes.Cipher{}, fmt.Errorf("failed to XOR components: %w", err)
+		}
 	}
 
 	kekCipher, err := aes.CreateFromKeyBytes(kekBytes)
