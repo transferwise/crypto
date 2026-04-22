@@ -93,30 +93,13 @@ func (b *Bundle) AddComponent(componentIndex int, componentValue string, compone
 
 // Merge tries to build the result TripleDES key from all the imported components
 //
-// Deprecated: Use MergeKey instead as it supports both TripleDES and AES keys.
+// Deprecated: Use MergeTripleDESKey instead.
 func (b *Bundle) Merge() (des.Cipher, error) {
-	if b.KeyType == KeyTypeAES {
-		return des.Cipher{}, errors.New("Merge() does not support AES bundles, use MergeKey() instead")
-	}
-	result, err := b.mergeTripleDES()
-	if err != nil {
-		return des.Cipher{}, err
-	}
-	return *result.(*des.Cipher), nil
+	return b.MergeTripleDESKey()
 }
 
-// MergeKey tries to build the result key from all the imported components.
-// It supports both TripleDES and AES key types.
-func (b *Bundle) MergeKey() (KeyCipher, error) {
-	switch b.KeyType {
-	case KeyTypeAES:
-		return b.mergeAES()
-	default:
-		return b.mergeTripleDES()
-	}
-}
-
-func (b *Bundle) mergeTripleDES() (KeyCipher, error) {
+// MergeTripleDESKey tries to build the result TripleDES key from all the imported components
+func (b *Bundle) MergeTripleDESKey() (des.Cipher, error) {
 	kekBytes := make([]byte, 24)
 	for _, component := range b.Components {
 		kekBytes, _ = xor.XORBytes(kekBytes, component)
@@ -124,23 +107,24 @@ func (b *Bundle) mergeTripleDES() (KeyCipher, error) {
 
 	kekCipher, err := des.CreateFromTripleDESKeyBytes(kekBytes)
 	if err != nil {
-		return nil, err
+		return des.Cipher{}, err
 	}
 	if !kekCipher.VerifyCheckValue(b.CheckValue) {
-		return nil, errors.New("derived key check value does not tally")
+		return des.Cipher{}, errors.New("derived key check value does not tally")
 	}
 
-	return &kekCipher, nil
+	return kekCipher, nil
 }
 
-func (b *Bundle) mergeAES() (KeyCipher, error) {
+// MergeAESKey tries to build the result AES key from all the imported components
+func (b *Bundle) MergeAESKey() (aes.Cipher, error) {
 	var keyLen int
 	for _, component := range b.Components {
 		keyLen = len(component)
 		break
 	}
 	if keyLen == 0 {
-		return nil, errors.New("no components to merge")
+		return aes.Cipher{}, errors.New("no components to merge")
 	}
 
 	kekBytes := make([]byte, keyLen)
@@ -150,11 +134,11 @@ func (b *Bundle) mergeAES() (KeyCipher, error) {
 
 	kekCipher, err := aes.CreateFromKeyBytes(kekBytes)
 	if err != nil {
-		return nil, err
+		return aes.Cipher{}, err
 	}
 	if !kekCipher.VerifyCheckValue(b.CheckValue) {
-		return nil, errors.New("derived key check value does not tally")
+		return aes.Cipher{}, errors.New("derived key check value does not tally")
 	}
 
-	return &kekCipher, nil
+	return kekCipher, nil
 }
