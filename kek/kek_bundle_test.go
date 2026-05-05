@@ -117,3 +117,221 @@ func TestMergeResultKeySuccess(t *testing.T) {
 		t.Fatalf("Expected %s but got back %s", expectedKey, hex.EncodeToString(resultKey.KeyBytes))
 	}
 }
+
+// AES KEK tests
+
+func TestAESAddComponentInvalidValue(t *testing.T) {
+	kek := NewWithKeyType("aes-kek", 1, 3, "B1DD24", KeyTypeAES)
+
+	err := kek.AddComponent(1, "invalid", "7DF76B")
+	if err == nil {
+		t.Fatal("should have failed if the component value is invalid")
+	}
+}
+
+func TestAESAddComponentCheckValueNotTally(t *testing.T) {
+	kek := NewWithKeyType("aes-kek", 1, 3, "B1DD24", KeyTypeAES)
+
+	err := kek.AddComponent(1, "2b7e151628aed2a6abf7158809cf4f3c", "AAAAAA")
+	if err == nil {
+		t.Fatal("should have failed if the component check value does not tally")
+	}
+}
+
+func TestAESAddComponentSuccess(t *testing.T) {
+	kek := NewWithKeyType("aes-kek", 1, 3, "B1DD24", KeyTypeAES)
+
+	err := kek.AddComponent(1, "2b7e151628aed2a6abf7158809cf4f3c", "7DF76B")
+	if err != nil {
+		t.Fatalf("adding component failed with %v", err)
+	}
+}
+
+func TestAESMergeAESKeySuccess(t *testing.T) {
+	kek := NewWithKeyType("aes-kek", 1, 3, "B1DD24", KeyTypeAES)
+
+	err := kek.AddComponent(1, "2b7e151628aed2a6abf7158809cf4f3c", "7DF76B")
+	if err != nil {
+		t.Fatalf("adding component 1 failed with %v", err)
+	}
+
+	err = kek.AddComponent(2, "8e73b0f7da0e6452c810f32b809079e5", "56F9E5")
+	if err != nil {
+		t.Fatalf("adding component 2 failed with %v", err)
+	}
+
+	err = kek.AddComponent(3, "603deb1015ca71be2b73aef0857d77d9", "D0140D")
+	if err != nil {
+		t.Fatalf("adding component 3 failed with %v", err)
+	}
+
+	resultKey, err := kek.MergeAESKey()
+	if err != nil {
+		t.Fatalf("merge result key failed with %v", err)
+	}
+	if resultKey.CheckValue() != "b1dd24" {
+		t.Fatalf("Expected check value b1dd24 but got %s", resultKey.CheckValue())
+	}
+}
+
+func TestAESMergeAESKeyCheckValueNotTally(t *testing.T) {
+	kek := NewWithKeyType("aes-kek", 1, 3, "FFFFFF", KeyTypeAES)
+
+	err := kek.AddComponent(1, "2b7e151628aed2a6abf7158809cf4f3c", "7DF76B")
+	if err != nil {
+		t.Fatalf("adding component 1 failed with %v", err)
+	}
+
+	err = kek.AddComponent(2, "8e73b0f7da0e6452c810f32b809079e5", "56F9E5")
+	if err != nil {
+		t.Fatalf("adding component 2 failed with %v", err)
+	}
+
+	err = kek.AddComponent(3, "603deb1015ca71be2b73aef0857d77d9", "D0140D")
+	if err != nil {
+		t.Fatalf("adding component 3 failed with %v", err)
+	}
+
+	_, err = kek.MergeAESKey()
+	if err == nil {
+		t.Fatal("should have failed if the result key check value does not tally")
+	}
+}
+
+func TestAES192MergeAESKeySuccess(t *testing.T) {
+	kek := NewWithKeyType("aes192-kek", 1, 3, "5AE64F", KeyTypeAES)
+
+	err := kek.AddComponent(1, "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b", "22452D")
+	if err != nil {
+		t.Fatalf("adding component 1 failed with %v", err)
+	}
+
+	err = kek.AddComponent(2, "603deb1015ca71be2b73aef0857d7781ee9893232c8a057b", "CCF0FB")
+	if err != nil {
+		t.Fatalf("adding component 2 failed with %v", err)
+	}
+
+	err = kek.AddComponent(3, "2b7e151628aed2a6abf7158809cf4f3c1234567890abcdef", "493E5F")
+	if err != nil {
+		t.Fatalf("adding component 3 failed with %v", err)
+	}
+
+	resultKey, err := kek.MergeAESKey()
+	if err != nil {
+		t.Fatalf("merge result key failed with %v", err)
+	}
+	if resultKey.CheckValue() != "5ae64f" {
+		t.Fatalf("Expected check value 5ae64f but got %s", resultKey.CheckValue())
+	}
+}
+
+func TestAES256MergeAESKeySuccess(t *testing.T) {
+	kek := NewWithKeyType("aes256-kek", 1, 3, "3820D1", KeyTypeAES)
+
+	err := kek.AddComponent(1, "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4", "E568F6")
+	if err != nil {
+		t.Fatalf("adding component 1 failed with %v", err)
+	}
+
+	err = kek.AddComponent(2, "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b01020304050607a1", "583F49")
+	if err != nil {
+		t.Fatalf("adding component 2 failed with %v", err)
+	}
+
+	err = kek.AddComponent(3, "2b7e151628aed2a6abf7158809cf4f3caabbccddeeff0011223344556677cc55", "EFBEED")
+	if err != nil {
+		t.Fatalf("adding component 3 failed with %v", err)
+	}
+
+	resultKey, err := kek.MergeAESKey()
+	if err != nil {
+		t.Fatalf("merge result key failed with %v", err)
+	}
+	if resultKey.CheckValue() != "3820d1" {
+		t.Fatalf("Expected check value 3820d1 but got %s", resultKey.CheckValue())
+	}
+}
+
+func TestAES192MergeAESKeyCheckValueNotTally(t *testing.T) {
+	kek := NewWithKeyType("aes192-kek", 1, 3, "FFFFFF", KeyTypeAES)
+
+	err := kek.AddComponent(1, "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b", "22452D")
+	if err != nil {
+		t.Fatalf("adding component 1 failed with %v", err)
+	}
+
+	err = kek.AddComponent(2, "603deb1015ca71be2b73aef0857d7781ee9893232c8a057b", "CCF0FB")
+	if err != nil {
+		t.Fatalf("adding component 2 failed with %v", err)
+	}
+
+	err = kek.AddComponent(3, "2b7e151628aed2a6abf7158809cf4f3c1234567890abcdef", "493E5F")
+	if err != nil {
+		t.Fatalf("adding component 3 failed with %v", err)
+	}
+
+	_, err = kek.MergeAESKey()
+	if err == nil {
+		t.Fatal("should have failed if the result key check value does not tally")
+	}
+}
+
+func TestAES256MergeAESKeyCheckValueNotTally(t *testing.T) {
+	kek := NewWithKeyType("aes256-kek", 1, 3, "FFFFFF", KeyTypeAES)
+
+	err := kek.AddComponent(1, "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4", "E568F6")
+	if err != nil {
+		t.Fatalf("adding component 1 failed with %v", err)
+	}
+
+	err = kek.AddComponent(2, "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b01020304050607a1", "583F49")
+	if err != nil {
+		t.Fatalf("adding component 2 failed with %v", err)
+	}
+
+	err = kek.AddComponent(3, "2b7e151628aed2a6abf7158809cf4f3caabbccddeeff0011223344556677cc55", "EFBEED")
+	if err != nil {
+		t.Fatalf("adding component 3 failed with %v", err)
+	}
+
+	_, err = kek.MergeAESKey()
+	if err == nil {
+		t.Fatal("should have failed if the result key check value does not tally")
+	}
+}
+
+func TestAESComponentLengthMismatch(t *testing.T) {
+	kek := NewWithKeyType("aes-mixed-kek", 1, 2, "AAAAAA", KeyTypeAES)
+
+	err := kek.AddComponent(1, "2b7e151628aed2a6abf7158809cf4f3c", "7DF76B")
+	if err != nil {
+		t.Fatalf("adding AES-128 component failed with %v", err)
+	}
+
+	err = kek.AddComponent(2, "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b", "22452D")
+	if err != nil {
+		t.Fatalf("adding AES-192 component failed with %v", err)
+	}
+
+	_, err = kek.MergeAESKey()
+	if err == nil {
+		t.Fatal("should have failed if components have mismatched lengths")
+	}
+}
+
+func TestMergeTripleDESKeySuccess(t *testing.T) {
+	kek := New("visa", 1, 3, "2D617C")
+
+	kek.AddComponent(1, "E38FD6D9EF85A892F2FBFDD083A407AE", "DD1375")
+	kek.AddComponent(2, "D0085DBFFB3723B926CB7980B9EA6268", "DACAF5")
+	kek.AddComponent(3, "20295EBC0B80BF5EF7F78C9125686D3B", "DE5AA9")
+
+	resultKey, err := kek.MergeTripleDESKey()
+	if err != nil {
+		t.Fatalf("MergeTripleDESKey failed with %v", err)
+	}
+	expectedKey := "13AED5DA1F32347523C708C11F2608FD13AED5DA1F323475"
+	if !strings.EqualFold(expectedKey, hex.EncodeToString(resultKey.KeyBytes)) {
+		t.Fatalf("Expected %s but got back %s", expectedKey, hex.EncodeToString(resultKey.KeyBytes))
+	}
+}

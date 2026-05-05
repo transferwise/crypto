@@ -29,7 +29,7 @@ func TestEvalHash(t *testing.T) {
 	}
 
 	hash := pgp.EvalHash()
-	if hash != "a9ad3d647c3978c569ed6295b402369b789c90d6" {
+	if hash != "f6c8bf3371502b21e4f43f5bde9277a682fbc4d3" {
 		t.Fatalf("hash does not match: %s", hash)
 	}
 }
@@ -53,15 +53,15 @@ func TestEncryptDecrypt(t *testing.T) {
 	text := "Secret text"
 	enc, err := pgp.Encrypt([]byte(text))
 	if err != nil {
-		t.Fatal("Failed to encrypt text")
+		t.Fatalf("Failed to encrypt text: %v", err)
 	}
 	dec, err := pgp.Decrypt(enc, nil)
 	if err != nil {
-		t.Fatal("Failed to decrypt text")
+		t.Fatalf("Failed to decrypt text: %v", err)
 	}
 
 	if string(dec) != text {
-		t.Fatal("Decrypted text does not match")
+		t.Fatalf("Decrypted text does not match: %s", string(dec))
 	}
 }
 

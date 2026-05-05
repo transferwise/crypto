@@ -57,6 +57,34 @@ func TestAESCipher_EncryptAndDecryptNotPrefixNonce(t *testing.T) {
 	}
 }
 
+func TestAESCheckValue(t *testing.T) {
+	keyBytes, _ := hex.DecodeString("2b7e151628aed2a6abf7158809cf4f3c")
+	cipher, _ := New(keyBytes)
+
+	checkValue := cipher.CheckValue()
+	if checkValue != "7df76b" {
+		t.Errorf("Expected check value 7df76b but got %s", checkValue)
+	}
+}
+
+func TestAESVerifyCheckValue(t *testing.T) {
+	keyBytes, _ := hex.DecodeString("2b7e151628aed2a6abf7158809cf4f3c")
+	cipher, _ := New(keyBytes)
+
+	if !cipher.VerifyCheckValue("7df76b") {
+		t.Error("Expected check value to verify successfully")
+	}
+	if !cipher.VerifyCheckValue("7DF76B") {
+		t.Error("Expected check value verification to be case insensitive")
+	}
+	if cipher.VerifyCheckValue("abcdef") {
+		t.Error("Expected wrong check value to fail verification")
+	}
+	if cipher.VerifyCheckValue("") {
+		t.Error("Expected empty check value to fail verification")
+	}
+}
+
 func TestAESCipher_EncryptAndDecryptPrefixNonce(t *testing.T) {
 	keyBytes, _ := uuid.GenerateRandomBytes(32)
 	cipher, _ := New(keyBytes)
