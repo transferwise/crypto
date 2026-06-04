@@ -12,6 +12,7 @@
 package aes
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 
@@ -82,6 +83,56 @@ func TestAESVerifyCheckValue(t *testing.T) {
 	}
 	if cipher.VerifyCheckValue("") {
 		t.Error("Expected empty check value to fail verification")
+	}
+}
+
+func TestAESCipher_KeyWrapAndUnwrap(t *testing.T) {
+	kekBytes, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F")
+	cipher, _ := New(kekBytes)
+
+	plainKeyBytes, _ := hex.DecodeString("00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF")
+
+	wrapped, err := cipher.KeyWrap(plainKeyBytes)
+	if err != nil {
+		t.Fatalf("Did not expect a KeyWrap error but got %q", err)
+	}
+
+	unwrapped, err := cipher.KeyUnwrap(wrapped)
+	if err != nil {
+		t.Fatalf("Did not expect a KeyUnwrap error but got %q", err)
+	}
+
+	if !bytes.Equal(plainKeyBytes, unwrapped) {
+		t.Errorf("Expected %s but got %s", hex.EncodeToString(plainKeyBytes), hex.EncodeToString(unwrapped))
+	}
+}
+
+func TestAESCipher_KeyWrapRFC3394Vector(t *testing.T) {
+	// RFC 3394 test vector: 256-bit KEK, 128-bit key data
+	kekBytes, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F")
+	cipher, _ := New(kekBytes)
+
+	plainKeyBytes, _ := hex.DecodeString("00112233445566778899AABBCCDDEEFF")
+	expectedWrapped, _ := hex.DecodeString("64E8C3F9CE0F5BA263E9777905818A2A93C8191E7D6E8AE7")
+
+	wrapped, err := cipher.KeyWrap(plainKeyBytes)
+	if err != nil {
+		t.Fatalf("Did not expect a KeyWrap error but got %q", err)
+	}
+
+	if !bytes.Equal(wrapped, expectedWrapped) {
+		t.Errorf("Expected wrapped %s but got %s", hex.EncodeToString(expectedWrapped), hex.EncodeToString(wrapped))
+	}
+}
+
+func TestAESCipher_KeyUnwrapInvalidData(t *testing.T) {
+	kekBytes, _ := uuid.GenerateRandomBytes(32)
+	cipher, _ := New(kekBytes)
+
+	badData := make([]byte, 24)
+	_, err := cipher.KeyUnwrap(badData)
+	if err == nil {
+		t.Error("Expected an error for invalid wrapped data")
 	}
 }
 

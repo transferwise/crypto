@@ -20,6 +20,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/ProtonMail/go-crypto/openpgp/aes/keywrap"
 	"github.com/hashicorp/go-uuid"
 )
 
@@ -88,4 +89,14 @@ func (c *Cipher) VerifyCheckValue(checkValue string) bool {
 	}
 
 	return strings.EqualFold(derivedCheckValue, checkValue)
+}
+
+// KeyWrap implements AES Key Wrap (RFC 3394).
+func (c *Cipher) KeyWrap(plainKeyBytes []byte) ([]byte, error) {
+	return keywrap.Wrap(c.KeyBytes, plainKeyBytes)
+}
+
+// KeyUnwrap implements AES Key Unwrap (RFC 3394).
+func (c *Cipher) KeyUnwrap(wrappedKeyBytes []byte) ([]byte, error) {
+	return keywrap.Unwrap(c.KeyBytes, wrappedKeyBytes)
 }
