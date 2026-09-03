@@ -22,14 +22,15 @@ materially weaker guarantee.
 > - Callers **must** authenticate the initialisation vector together with the
 >   ciphertext by separate means (for example an HMAC over both) and **must**
 >   verify it before decrypting.
-> - A PKCS#7 padding error is **not** an integrity check. Never surface padding
+> - A padding error is **not** an integrity check. Never surface padding
 >   failures to an untrusted caller: doing so exposes a
 >   [padding oracle](https://en.wikipedia.org/wiki/Padding_oracle_attack) that
 >   can be used to recover plaintext.
 
 - factory methods to construct an AES-CBC cipher from the raw key bytes or hex text
 - `Encrypt` / `Decrypt` operate on block-aligned input with no padding
-- `EncryptPadded` / `DecryptPadded` apply and remove PKCS#7 padding (RFC 5652 §6.3)
+- `EncryptISO9797M2Padded` / `DecryptISO9797M2Padded` apply and remove ISO/IEC
+  9797-1 padding method 2
 - `GenerateCBCIV` returns a random 16-byte initialisation vector
 - verify the constructed cipher against the check value; the value depends only
   on the key, so it matches the one `Cipher` reports for the same key
@@ -41,9 +42,37 @@ Parameters:
 | Key | 16, 24, or 32 bytes |
 | Initialisation vector | Always exactly 16 bytes, for every key size |
 | Input to `Encrypt` / `Decrypt` | Non-zero multiple of 16 bytes |
-| Input to `EncryptPadded` | Any length, including empty |
-| Padding | PKCS#7 via the `*Padded` methods, otherwise agreed by the protocol |
+| Input to `EncryptISO9797M2Padded` | Any length, including empty |
+| Padding | ISO/IEC 9797-1 method 2 via the `*ISO9797M2Padded` methods, otherwise agreed by the protocol |
 | Authentication | Not provided. Supplied separately by the caller |
+
+#### Padding
+
+Padding belongs to the surrounding protocol, not to CBC. The padded methods are
+named after their scheme so a protocol that needs a different one cannot reach
+them by accident. Use `Encrypt` and `Decrypt` when the protocol pads by other
+means or not at all.
+
+ISO/IEC 9797-1 method 2 appends a single `0x80` byte followed by `0x00` filler to
+the block boundary. At least one byte is always added, so input that is already
+block aligned gains a whole extra block. That is what makes the padding
+removable without ambiguity, even when the message itself ends in `0x80` or
+`0x00`. The same construction appears in ISO/IEC 7816-4 and is what BouncyCastle
+calls `ISO7816-4Padding`.
+
+Card personalisation interfaces often label this scheme `ISO2`, including the
+`aes-256-cbc-iso2` algorithm name in the G+D CII data provider interface.
+
+Two schemes are commonly confused with it and neither is implemented here:
+
+- **PKCS#7** (RFC 5652 §6.3), which Java calls `PKCS5Padding` and OpenSSL uses by
+  default for CBC. It is a different byte layout and is **not** `ISO2`. Do not
+  substitute it merely because it also produces block-aligned data.
+- **ISO 10126-2**, which pads with random bytes and stores the padding length in
+  the final byte. It was withdrawn in 2007 and, being non-deterministic, cannot
+  be checked by re-encrypting a known plaintext.
+
+#### Initialisation vector
 
 The initialisation vector is always supplied by the caller and is never prefixed
 to, or stripped from, the ciphertext. How it is transported or derived is a
@@ -61,7 +90,7 @@ option to pick freely, and it should be justified by the protocol specification.
 ```go
 cipher, err := aes.CreateCBCFromKeyString(hexKey)
 iv, err := aes.GenerateCBCIV()
-cipherBytes, err := cipher.EncryptPadded(plainBytes, iv)
+cipherBytes, err := cipher.EncryptISO9797M2Padded(plainBytes, iv)
 // Now authenticate iv and cipherBytes together, and transmit the tag alongside.
 ```
 

@@ -45,8 +45,8 @@ type CBCCipher struct {
 
 // Encrypt encrypts plainBytes under the given initialisation vector without
 // applying any padding. plainBytes must be a non-zero multiple of the AES block
-// size; use EncryptPadded for arbitrary length input. iv must be exactly one AES
-// block long, for every supported key size.
+// size; use EncryptISO9797M2Padded for arbitrary length input. iv must be
+// exactly one AES block long, for every supported key size.
 //
 // Neither plainBytes nor iv is modified.
 func (c *CBCCipher) Encrypt(plainBytes []byte, iv []byte) ([]byte, error) {
@@ -91,27 +91,34 @@ func (c *CBCCipher) Decrypt(cipherBytes []byte, iv []byte) ([]byte, error) {
 	return plainBytes, nil
 }
 
-// EncryptPadded applies PKCS#7 padding (RFC 5652 section 6.3) to plainBytes and
-// encrypts the result, so plainBytes may be of any length, including empty. iv
-// must be exactly one AES block long.
+// EncryptISO9797M2Padded applies ISO/IEC 9797-1 padding method 2 to plainBytes
+// and encrypts the result, so plainBytes may be of any length, including empty.
+// iv must be exactly one AES block long.
 //
-// PKCS#7 is one padding scheme among several; it is a choice made by the
-// surrounding protocol rather than a property of CBC. Use Encrypt when the
-// protocol pads by other means or not at all.
+// The padding is a single 0x80 byte followed by zero filler to the block
+// boundary, and at least one byte is always added. The same construction appears
+// in ISO/IEC 7816-4 and is labelled "ISO2" by several card personalisation
+// interfaces, including the aes-256-cbc-iso2 algorithm name used by the G+D CII
+// data provider interface.
+//
+// Padding is a choice made by the surrounding protocol rather than a property of
+// CBC. This method is named after its scheme so that a protocol requiring a
+// different one, such as PKCS#7 or ISO 10126-2, cannot reach it by accident. Use
+// Encrypt when the protocol pads by other means or not at all.
 //
 // Neither plainBytes nor iv is modified.
-func (c *CBCCipher) EncryptPadded(plainBytes []byte, iv []byte) ([]byte, error) {
+func (c *CBCCipher) EncryptISO9797M2Padded(plainBytes []byte, iv []byte) ([]byte, error) {
 	blockSize := c.block.BlockSize()
 	if err := validateIV(iv, blockSize); err != nil {
 		return nil, err
 	}
 
-	return c.Encrypt(pad(plainBytes, blockSize), iv)
+	return c.Encrypt(padISO9797M2(plainBytes, blockSize), iv)
 }
 
-// DecryptPadded decrypts cipherBytes and removes its PKCS#7 padding (RFC 5652
-// section 6.3). cipherBytes must be a non-zero multiple of the AES block size
-// and iv must be exactly one AES block long.
+// DecryptISO9797M2Padded decrypts cipherBytes and removes its ISO/IEC 9797-1
+// padding method 2. cipherBytes must be a non-zero multiple of the AES block
+// size and iv must be exactly one AES block long.
 //
 // A padding error is NOT an integrity check. A modified ciphertext can decrypt
 // to well formed padding just as easily as to malformed padding, so a nil error
@@ -119,13 +126,13 @@ func (c *CBCCipher) EncryptPadded(plainBytes []byte, iv []byte) ([]byte, error) 
 // callers; doing so exposes a padding oracle. See CBCCipher.
 //
 // Neither cipherBytes nor iv is modified.
-func (c *CBCCipher) DecryptPadded(cipherBytes []byte, iv []byte) ([]byte, error) {
+func (c *CBCCipher) DecryptISO9797M2Padded(cipherBytes []byte, iv []byte) ([]byte, error) {
 	paddedBytes, err := c.Decrypt(cipherBytes, iv)
 	if err != nil {
 		return nil, err
 	}
 
-	return unpad(paddedBytes, c.block.BlockSize())
+	return unpadISO9797M2(paddedBytes, c.block.BlockSize())
 }
 
 // CheckValue returns the key check value of the underlying key. It is derived

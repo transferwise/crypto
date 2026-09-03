@@ -153,11 +153,11 @@ func TestAESCBCCipher_RejectsInvalidIVLength(t *testing.T) {
 			if _, err := cipher.Decrypt(plainBytes, iv); err == nil {
 				t.Errorf("%s: expected Decrypt to reject a %d byte IV", vector.name, ivLength)
 			}
-			if _, err := cipher.EncryptPadded(plainBytes, iv); err == nil {
-				t.Errorf("%s: expected EncryptPadded to reject a %d byte IV", vector.name, ivLength)
+			if _, err := cipher.EncryptISO9797M2Padded(plainBytes, iv); err == nil {
+				t.Errorf("%s: expected EncryptISO9797M2Padded to reject a %d byte IV", vector.name, ivLength)
 			}
-			if _, err := cipher.DecryptPadded(plainBytes, iv); err == nil {
-				t.Errorf("%s: expected DecryptPadded to reject a %d byte IV", vector.name, ivLength)
+			if _, err := cipher.DecryptISO9797M2Padded(plainBytes, iv); err == nil {
+				t.Errorf("%s: expected DecryptISO9797M2Padded to reject a %d byte IV", vector.name, ivLength)
 			}
 		}
 
@@ -167,7 +167,7 @@ func TestAESCBCCipher_RejectsInvalidIVLength(t *testing.T) {
 	}
 }
 
-func TestAESCBCCipher_EncryptAndDecryptPaddedRoundTrip(t *testing.T) {
+func TestAESCBCCipher_EncryptAndDecryptISO9797M2PaddedRoundTrip(t *testing.T) {
 	iv, _ := hex.DecodeString(nistIV)
 
 	for _, vector := range nistCBCVectors {
@@ -182,7 +182,7 @@ func TestAESCBCCipher_EncryptAndDecryptPaddedRoundTrip(t *testing.T) {
 					plainBytes[i] = byte(i)
 				}
 
-				cipherBytes, err := cipher.EncryptPadded(plainBytes, iv)
+				cipherBytes, err := cipher.EncryptISO9797M2Padded(plainBytes, iv)
 				if err != nil {
 					t.Errorf("Did not expect an encryption error for length %d but got %q", length, err)
 					continue
@@ -191,7 +191,7 @@ func TestAESCBCCipher_EncryptAndDecryptPaddedRoundTrip(t *testing.T) {
 					t.Errorf("Expected padded ciphertext longer than %d and block aligned but get %d", length, len(cipherBytes))
 				}
 
-				decryptedBytes, err := cipher.DecryptPadded(cipherBytes, iv)
+				decryptedBytes, err := cipher.DecryptISO9797M2Padded(cipherBytes, iv)
 				if err != nil {
 					t.Errorf("Did not expect a decryption error for length %d but got %q", length, err)
 					continue
@@ -205,32 +205,88 @@ func TestAESCBCCipher_EncryptAndDecryptPaddedRoundTrip(t *testing.T) {
 	}
 }
 
-func TestAESCBCCipher_DecryptPaddedRejectsInvalidPKCS7Padding(t *testing.T) {
+// TestAESCBCCipher_EncryptISO9797M2PaddedMatchesNISTVectors ties the padded path
+// back to the published known answer vectors. CBC encrypts block by block, so
+// appending a padding block cannot alter the ciphertext of the blocks before it.
+// The NIST plaintext is block aligned, which means ISO/IEC 9797-1 method 2 adds
+// exactly one extra block and the leading blocks must match the vector byte for
+// byte.
+func TestAESCBCCipher_EncryptISO9797M2PaddedMatchesNISTVectors(t *testing.T) {
+	iv, _ := hex.DecodeString(nistIV)
+	plainBytes, _ := hex.DecodeString(nistPlaintext)
+
+	for _, vector := range nistCBCVectors {
+		t.Run(vector.name, func(t *testing.T) {
+			cipher, _ := CreateCBCFromKeyString(vector.key)
+			expectedBytes, _ := hex.DecodeString(vector.ciphertext)
+
+			cipherBytes, err := cipher.EncryptISO9797M2Padded(plainBytes, iv)
+			if err != nil {
+				t.Fatalf("Did not expect an encryption error but got %q", err)
+			}
+
+			if len(cipherBytes) != len(expectedBytes)+16 {
+				t.Fatalf("Expected %d bytes of ciphertext but got %d", len(expectedBytes)+16, len(cipherBytes))
+			}
+			if !bytes.Equal(cipherBytes[:len(expectedBytes)], expectedBytes) {
+				t.Errorf("Expected leading blocks %s but get %s", hex.EncodeToString(expectedBytes), hex.EncodeToString(cipherBytes[:len(expectedBytes)]))
+			}
+		})
+	}
+}
+
+func TestAESCBCCipher_DecryptISO9797M2PaddedRejectsMalformedPadding(t *testing.T) {
 	cipher, _ := CreateCBCFromKeyString(nistCBCVectors[0].key)
 	iv, _ := hex.DecodeString(nistIV)
 
-	// A block whose final byte is zero can never be valid PKCS#7 padding, so
-	// encrypting it raw yields a ciphertext that DecryptPadded must reject.
-	// This is a padding check, not an integrity check: see
+	// Each of these blocks fails the ISO/IEC 9797-1 method 2 rules, so
+	// encrypting it raw yields a ciphertext that DecryptISO9797M2Padded must
+	// reject. This is a padding check, not an integrity check: see
 	// TestAESCBCCipher_DecryptDoesNotDetectModifiedCiphertext.
-	unpaddableBlock, _ := hex.DecodeString("000102030405060708090a0b0c0d0e00")
-
-	cipherBytes, err := cipher.Encrypt(unpaddableBlock, iv)
-	if err != nil {
-		t.Fatalf("Did not expect an encryption error but got %q", err)
+	testCases := []struct {
+		name  string
+		block string
+	}{
+		{
+			name:  "final byte is neither the marker nor zero filler",
+			block: "000102030405060708090a0b0c0d0e01",
+		},
+		{
+			name:  "zero filler runs back to a non marker byte",
+			block: "000102030405060708090a0b0c0d0e00",
+		},
+		{
+			name:  "block is all zeroes so the marker is missing",
+			block: "00000000000000000000000000000000",
+		},
+		{
+			name:  "PKCS#7 padding is not accepted in place of the marker",
+			block: "000102030405060708090a0b0c0d0202",
+		},
 	}
 
-	if _, err := cipher.DecryptPadded(cipherBytes, iv); err == nil {
-		t.Error("Expected DecryptPadded to reject invalid PKCS#7 padding but got no error")
-	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			unpaddableBlock, _ := hex.DecodeString(testCase.block)
 
-	// The same bytes decrypt without complaint when no padding is expected.
-	plainBytes, err := cipher.Decrypt(cipherBytes, iv)
-	if err != nil {
-		t.Errorf("Did not expect a raw decryption error but got %q", err)
-	}
-	if !bytes.Equal(plainBytes, unpaddableBlock) {
-		t.Errorf("Expected %s but get %s", hex.EncodeToString(unpaddableBlock), hex.EncodeToString(plainBytes))
+			cipherBytes, err := cipher.Encrypt(unpaddableBlock, iv)
+			if err != nil {
+				t.Fatalf("Did not expect an encryption error but got %q", err)
+			}
+
+			if _, err := cipher.DecryptISO9797M2Padded(cipherBytes, iv); err == nil {
+				t.Error("Expected DecryptISO9797M2Padded to reject malformed padding but got no error")
+			}
+
+			// The same bytes decrypt without complaint when no padding is expected.
+			plainBytes, err := cipher.Decrypt(cipherBytes, iv)
+			if err != nil {
+				t.Errorf("Did not expect a raw decryption error but got %q", err)
+			}
+			if !bytes.Equal(plainBytes, unpaddableBlock) {
+				t.Errorf("Expected %s but get %s", hex.EncodeToString(unpaddableBlock), hex.EncodeToString(plainBytes))
+			}
+		})
 	}
 }
 
@@ -260,18 +316,18 @@ func TestAESCBCCipher_DecryptDoesNotDetectModifiedCiphertext(t *testing.T) {
 	}
 }
 
-// TestAESCBCCipher_DecryptPaddedDoesNotDetectModifiedIV goes further: flipping a
-// bit in the initialisation vector flips exactly the same bit in the first
-// plaintext block and leaves every later block, including the padding block,
-// untouched. DecryptPadded therefore returns attacker chosen plaintext with a
-// nil error. Valid padding is not integrity.
-func TestAESCBCCipher_DecryptPaddedDoesNotDetectModifiedIV(t *testing.T) {
+// TestAESCBCCipher_DecryptISO9797M2PaddedDoesNotDetectModifiedIV goes further:
+// flipping a bit in the initialisation vector flips exactly the same bit in the
+// first plaintext block and leaves every later block, including the padding
+// block, untouched. DecryptISO9797M2Padded therefore returns attacker chosen
+// plaintext with a nil error. Valid padding is not integrity.
+func TestAESCBCCipher_DecryptISO9797M2PaddedDoesNotDetectModifiedIV(t *testing.T) {
 	cipher, _ := CreateCBCFromKeyString(nistCBCVectors[0].key)
 	iv, _ := hex.DecodeString(nistIV)
 	plainBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
 
-	// One block of plaintext plus a whole block of PKCS#7 padding.
-	cipherBytes, err := cipher.EncryptPadded(plainBytes, iv)
+	// Block aligned plaintext, so the padding occupies a whole extra block.
+	cipherBytes, err := cipher.EncryptISO9797M2Padded(plainBytes, iv)
 	if err != nil {
 		t.Fatalf("Did not expect an encryption error but got %q", err)
 	}
@@ -279,7 +335,7 @@ func TestAESCBCCipher_DecryptPaddedDoesNotDetectModifiedIV(t *testing.T) {
 	modifiedIV := cloneBytes(iv)
 	modifiedIV[0] ^= 0xff
 
-	decryptedBytes, err := cipher.DecryptPadded(cipherBytes, modifiedIV)
+	decryptedBytes, err := cipher.DecryptISO9797M2Padded(cipherBytes, modifiedIV)
 	if err != nil {
 		t.Fatalf("Expected a modified IV to still decrypt without error but got %q", err)
 	}
@@ -296,7 +352,7 @@ func TestAESCBCCipher_DoesNotModifyInputs(t *testing.T) {
 	iv, _ := hex.DecodeString(nistIV)
 	plainBytes, _ := hex.DecodeString(nistPlaintext)
 	cipherBytes, _ := hex.DecodeString(nistCBCVectors[0].ciphertext)
-	paddedCipherBytes, _ := cipher.EncryptPadded(plainBytes, iv)
+	paddedCipherBytes, _ := cipher.EncryptISO9797M2Padded(plainBytes, iv)
 
 	operations := []struct {
 		name  string
@@ -305,8 +361,8 @@ func TestAESCBCCipher_DoesNotModifyInputs(t *testing.T) {
 	}{
 		{"Encrypt", plainBytes, cipher.Encrypt},
 		{"Decrypt", cipherBytes, cipher.Decrypt},
-		{"EncryptPadded", plainBytes, cipher.EncryptPadded},
-		{"DecryptPadded", paddedCipherBytes, cipher.DecryptPadded},
+		{"EncryptISO9797M2Padded", plainBytes, cipher.EncryptISO9797M2Padded},
+		{"DecryptISO9797M2Padded", paddedCipherBytes, cipher.DecryptISO9797M2Padded},
 	}
 
 	for _, operation := range operations {
