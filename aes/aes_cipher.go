@@ -10,7 +10,11 @@
 	limitations under the License.
 */
 
-// Package aes provides wrapper methods on top of the AES GCM cipher for our own usage
+// Package aes provides wrapper methods on top of the AES cipher for our own usage.
+//
+// Cipher wraps AES GCM, which is authenticated. CBCCipher wraps AES CBC, which
+// provides confidentiality only and is not authenticated; see CBCCipher for the
+// obligations that places on the caller.
 package aes
 
 import (
@@ -68,7 +72,18 @@ func (cipher *Cipher) Decrypt(cipherBytes []byte, nonce []byte) ([]byte, error) 
 }
 
 func (c *Cipher) CheckValue() string {
-	block, err := aes.NewCipher(c.KeyBytes)
+	return deriveCheckValue(c.KeyBytes)
+}
+
+func (c *Cipher) VerifyCheckValue(checkValue string) bool {
+	return verifyCheckValue(c.KeyBytes, checkValue)
+}
+
+// deriveCheckValue returns the key check value of keyBytes: the first
+// checkValueBytes bytes of a single AES ECB block encryption of all zeroes,
+// hex encoded. It returns an empty string when keyBytes is not a valid AES key.
+func deriveCheckValue(keyBytes []byte) string {
+	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
 		return ""
 	}
@@ -77,12 +92,12 @@ func (c *Cipher) CheckValue() string {
 	return hex.EncodeToString(cipherBytes[:checkValueBytes])
 }
 
-func (c *Cipher) VerifyCheckValue(checkValue string) bool {
+func verifyCheckValue(keyBytes []byte, checkValue string) bool {
 	if checkValue == "" {
 		return false
 	}
 
-	derivedCheckValue := c.CheckValue()
+	derivedCheckValue := deriveCheckValue(keyBytes)
 	if derivedCheckValue == "" {
 		return false
 	}
