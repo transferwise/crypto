@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 )
 
-// CreateCBCFromKeyBytes constructs a new AES CBC cipher using the raw key bytes provided, the raw bytes must be either 16, 24, or 32 bytes
+// CreateCBCFromKeyBytes creates an AES-CBC cipher from a 16, 24, or 32-byte key.
 func CreateCBCFromKeyBytes(keyBytes []byte) (CBCCipher, error) {
 	if len(keyBytes) != 16 && len(keyBytes) != 24 && len(keyBytes) != 32 {
 		return CBCCipher{}, errors.New("AES key must be 16, 24, or 32 bytes")
@@ -34,7 +34,7 @@ func CreateCBCFromKeyBytes(keyBytes []byte) (CBCCipher, error) {
 	return CBCCipher{keyBlock, keyBytes}, nil
 }
 
-// CreateCBCFromKeyString constructs a new AES CBC cipher using the hex-encoded key string provided
+// CreateCBCFromKeyString creates an AES-CBC cipher from a hex-encoded key.
 func CreateCBCFromKeyString(key string) (CBCCipher, error) {
 	keyBytes, err := hex.DecodeString(key)
 	if err != nil {
@@ -43,17 +43,7 @@ func CreateCBCFromKeyString(key string) (CBCCipher, error) {
 	return CreateCBCFromKeyBytes(keyBytes)
 }
 
-// GenerateCBCIV returns a cryptographically random initialisation vector of one
-// AES block, suitable for a single CBC encryption.
-//
-// NIST SP 800-38A requires the initialisation vector to be unpredictable, and a
-// fresh one must be generated for every message encrypted under the same key.
-// The initialisation vector need not be kept secret and may travel alongside the
-// ciphertext, but it must be integrity protected together with the ciphertext;
-// see CBCCipher.
-//
-// The name is deliberately distinct from the GCM nonce that Cipher generates
-// internally: the two are not interchangeable.
+// GenerateCBCIV returns a random 16-byte IV. Generate a new IV for each message.
 func GenerateCBCIV() ([]byte, error) {
 	iv, err := uuid.GenerateRandomBytes(aes.BlockSize)
 	if err != nil {

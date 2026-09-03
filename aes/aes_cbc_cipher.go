@@ -18,37 +18,18 @@ import (
 	"fmt"
 )
 
-// CBCCipher is a wrapper of the AES CBC cipher and stores the raw key bytes.
+// CBCCipher encrypts and decrypts data with AES-CBC.
 //
-// CBC provides confidentiality only. Unlike Cipher, which wraps AES GCM, it is
-// NOT authenticated:
-//
-//   - A modified initialisation vector or ciphertext will usually still decrypt
-//     without error, producing attacker influenced plaintext. Decryption
-//     succeeding is therefore no evidence that the message is genuine.
-//   - Callers MUST authenticate the initialisation vector together with the
-//     ciphertext by separate means, for example an HMAC over both, and MUST
-//     verify it before decrypting.
-//   - Reporting padding failures back to an untrusted caller exposes a padding
-//     oracle, which can be used to recover plaintext.
-//
-// Prefer Cipher (AES GCM) unless an external protocol mandates CBC.
-//
-// The initialisation vector is always supplied by the caller and is never
-// prefixed to, or stripped from, the ciphertext by this type. How the
-// initialisation vector is transported or derived is a property of the
-// surrounding protocol, so it is left to the caller.
+// CBC does not authenticate data. Callers must authenticate the IV and
+// ciphertext separately and must not expose padding errors to untrusted callers.
+// The caller supplies the IV; CBCCipher does not include it in the ciphertext.
 type CBCCipher struct {
 	block    cipher.Block
 	KeyBytes []byte
 }
 
-// Encrypt encrypts plainBytes under the given initialisation vector without
-// applying any padding. plainBytes must be a non-zero multiple of the AES block
-// size; use EncryptISO9797M2Padded for arbitrary length input. iv must be
-// exactly one AES block long, for every supported key size.
-//
-// Neither plainBytes nor iv is modified.
+// Encrypt encrypts non-empty, block-aligned plainBytes with a 16-byte IV.
+// It does not add padding or modify its inputs.
 func (c *CBCCipher) Encrypt(plainBytes []byte, iv []byte) ([]byte, error) {
 	blockSize := c.block.BlockSize()
 	if err := validateIV(iv, blockSize); err != nil {
@@ -66,14 +47,8 @@ func (c *CBCCipher) Encrypt(plainBytes []byte, iv []byte) ([]byte, error) {
 	return cipherBytes, nil
 }
 
-// Decrypt decrypts cipherBytes under the given initialisation vector without
-// removing any padding. cipherBytes must be a non-zero multiple of the AES block
-// size and iv must be exactly one AES block long.
-//
-// Decrypt does not, and cannot, detect modification of cipherBytes or iv. See
-// CBCCipher for the caller's obligations.
-//
-// Neither cipherBytes nor iv is modified.
+// Decrypt decrypts non-empty, block-aligned cipherBytes with a 16-byte IV.
+// It does not remove padding or modify its inputs.
 func (c *CBCCipher) Decrypt(cipherBytes []byte, iv []byte) ([]byte, error) {
 	blockSize := c.block.BlockSize()
 	if err := validateIV(iv, blockSize); err != nil {
@@ -91,22 +66,9 @@ func (c *CBCCipher) Decrypt(cipherBytes []byte, iv []byte) ([]byte, error) {
 	return plainBytes, nil
 }
 
-// EncryptISO9797M2Padded applies ISO/IEC 9797-1 padding method 2 to plainBytes
-// and encrypts the result, so plainBytes may be of any length, including empty.
-// iv must be exactly one AES block long.
-//
-// The padding is a single 0x80 byte followed by zero filler to the block
-// boundary, and at least one byte is always added. The same construction appears
-// in ISO/IEC 7816-4 and is labelled "ISO2" by several card personalisation
-// interfaces, including the aes-256-cbc-iso2 algorithm name used by the G+D CII
-// data provider interface.
-//
-// Padding is a choice made by the surrounding protocol rather than a property of
-// CBC. This method is named after its scheme so that a protocol requiring a
-// different one, such as PKCS#7 or ISO 10126-2, cannot reach it by accident. Use
-// Encrypt when the protocol pads by other means or not at all.
-//
-// Neither plainBytes nor iv is modified.
+// EncryptISO9797M2Padded pads plainBytes with ISO/IEC 9797-1 method 2, then
+// encrypts it with a 16-byte IV. It accepts empty input and does not modify its
+// inputs.
 func (c *CBCCipher) EncryptISO9797M2Padded(plainBytes []byte, iv []byte) ([]byte, error) {
 	blockSize := c.block.BlockSize()
 	if err := validateIV(iv, blockSize); err != nil {
@@ -116,16 +78,8 @@ func (c *CBCCipher) EncryptISO9797M2Padded(plainBytes []byte, iv []byte) ([]byte
 	return c.Encrypt(padISO9797M2(plainBytes, blockSize), iv)
 }
 
-// DecryptISO9797M2Padded decrypts cipherBytes and removes its ISO/IEC 9797-1
-// padding method 2. cipherBytes must be a non-zero multiple of the AES block
-// size and iv must be exactly one AES block long.
-//
-// A padding error is NOT an integrity check. A modified ciphertext can decrypt
-// to well formed padding just as easily as to malformed padding, so a nil error
-// says nothing about authenticity. Do not surface padding errors to untrusted
-// callers; doing so exposes a padding oracle. See CBCCipher.
-//
-// Neither cipherBytes nor iv is modified.
+// DecryptISO9797M2Padded decrypts cipherBytes with a 16-byte IV, then removes
+// ISO/IEC 9797-1 method 2 padding. It does not modify its inputs.
 func (c *CBCCipher) DecryptISO9797M2Padded(cipherBytes []byte, iv []byte) ([]byte, error) {
 	paddedBytes, err := c.Decrypt(cipherBytes, iv)
 	if err != nil {
@@ -135,15 +89,12 @@ func (c *CBCCipher) DecryptISO9797M2Padded(cipherBytes []byte, iv []byte) ([]byt
 	return unpadISO9797M2(paddedBytes, c.block.BlockSize())
 }
 
-// CheckValue returns the key check value of the underlying key. It is derived
-// from the key alone and is identical to the value Cipher reports for the same
-// key, being independent of the mode of operation.
+// CheckValue returns the AES key check value.
 func (c *CBCCipher) CheckValue() string {
 	return deriveCheckValue(c.KeyBytes)
 }
 
-// VerifyCheckValue reports whether the given key check value matches the one
-// derived from the underlying key. The comparison is case insensitive.
+// VerifyCheckValue reports whether checkValue matches the key, ignoring case.
 func (c *CBCCipher) VerifyCheckValue(checkValue string) bool {
 	return verifyCheckValue(c.KeyBytes, checkValue)
 }

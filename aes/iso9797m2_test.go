@@ -263,9 +263,7 @@ func TestISO9797M2RoundTrip(t *testing.T) {
 }
 
 func TestISO9797M2RoundTripWithTrailingMarkerAndZeroBytes(t *testing.T) {
-	// The awkward cases for this scheme are messages that already end in the
-	// bytes the padding uses. Because padding is always added, these still round
-	// trip exactly.
+	// Padding remains unambiguous when plaintext ends in 0x80 or 0x00.
 	testCases := []string{
 		"80",
 		"00",

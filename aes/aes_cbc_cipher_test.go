@@ -18,9 +18,7 @@ import (
 	"testing"
 )
 
-// Known answer vectors from NIST SP 800-38A appendix F.2, the four block CBC
-// examples for each AES key size. The plaintext and initialisation vector are
-// shared by all six sub-examples.
+// NIST SP 800-38A appendix F.2 uses the same plaintext and IV for each key size.
 const (
 	nistIV        = "000102030405060708090a0b0c0d0e0f"
 	nistPlaintext = "6bc1bee22e409f96e93d7e117393172a" +
@@ -138,9 +136,7 @@ func TestAESCBCCipher_EncryptRejectsInvalidInputLength(t *testing.T) {
 func TestAESCBCCipher_RejectsInvalidIVLength(t *testing.T) {
 	plainBytes, _ := hex.DecodeString(nistPlaintext)
 
-	// The initialisation vector is one AES block for every key size, so a key
-	// sized initialisation vector is a mistake worth catching for AES-192 and
-	// AES-256 in particular.
+	// An AES IV is always 16 bytes, regardless of key size.
 	for _, vector := range nistCBCVectors {
 		cipher, _ := CreateCBCFromKeyString(vector.key)
 
@@ -174,8 +170,7 @@ func TestAESCBCCipher_EncryptAndDecryptISO9797M2PaddedRoundTrip(t *testing.T) {
 		t.Run(vector.name, func(t *testing.T) {
 			cipher, _ := CreateCBCFromKeyString(vector.key)
 
-			// Lengths either side of the block boundary, including empty input
-			// and exactly block aligned input.
+			// Cover both sides of two block boundaries.
 			for length := 0; length <= 33; length++ {
 				plainBytes := make([]byte, length)
 				for i := range plainBytes {
@@ -205,12 +200,7 @@ func TestAESCBCCipher_EncryptAndDecryptISO9797M2PaddedRoundTrip(t *testing.T) {
 	}
 }
 
-// TestAESCBCCipher_EncryptISO9797M2PaddedMatchesNISTVectors ties the padded path
-// back to the published known answer vectors. CBC encrypts block by block, so
-// appending a padding block cannot alter the ciphertext of the blocks before it.
-// The NIST plaintext is block aligned, which means ISO/IEC 9797-1 method 2 adds
-// exactly one extra block and the leading blocks must match the vector byte for
-// byte.
+// A trailing padding block must not change the preceding NIST ciphertext blocks.
 func TestAESCBCCipher_EncryptISO9797M2PaddedMatchesNISTVectors(t *testing.T) {
 	iv, _ := hex.DecodeString(nistIV)
 	plainBytes, _ := hex.DecodeString(nistPlaintext)
@@ -239,10 +229,7 @@ func TestAESCBCCipher_DecryptISO9797M2PaddedRejectsMalformedPadding(t *testing.T
 	cipher, _ := CreateCBCFromKeyString(nistCBCVectors[0].key)
 	iv, _ := hex.DecodeString(nistIV)
 
-	// Each of these blocks fails the ISO/IEC 9797-1 method 2 rules, so
-	// encrypting it raw yields a ciphertext that DecryptISO9797M2Padded must
-	// reject. This is a padding check, not an integrity check: see
-	// TestAESCBCCipher_DecryptDoesNotDetectModifiedCiphertext.
+	// Encrypt malformed padded plaintext to exercise the public decrypt path.
 	testCases := []struct {
 		name  string
 		block string
@@ -278,7 +265,7 @@ func TestAESCBCCipher_DecryptISO9797M2PaddedRejectsMalformedPadding(t *testing.T
 				t.Error("Expected DecryptISO9797M2Padded to reject malformed padding but got no error")
 			}
 
-			// The same bytes decrypt without complaint when no padding is expected.
+			// Raw decryption does not validate padding.
 			plainBytes, err := cipher.Decrypt(cipherBytes, iv)
 			if err != nil {
 				t.Errorf("Did not expect a raw decryption error but got %q", err)
@@ -290,10 +277,7 @@ func TestAESCBCCipher_DecryptISO9797M2PaddedRejectsMalformedPadding(t *testing.T
 	}
 }
 
-// TestAESCBCCipher_DecryptDoesNotDetectModifiedCiphertext records that CBC is
-// unauthenticated. A modified ciphertext still decrypts without error, so a nil
-// error from Decrypt is no evidence that the message is genuine. Callers must
-// authenticate the initialisation vector and the ciphertext separately.
+// CBC decryption cannot detect ciphertext changes.
 func TestAESCBCCipher_DecryptDoesNotDetectModifiedCiphertext(t *testing.T) {
 	cipher, _ := CreateCBCFromKeyString(nistCBCVectors[0].key)
 	iv, _ := hex.DecodeString(nistIV)
@@ -316,17 +300,13 @@ func TestAESCBCCipher_DecryptDoesNotDetectModifiedCiphertext(t *testing.T) {
 	}
 }
 
-// TestAESCBCCipher_DecryptISO9797M2PaddedDoesNotDetectModifiedIV goes further:
-// flipping a bit in the initialisation vector flips exactly the same bit in the
-// first plaintext block and leaves every later block, including the padding
-// block, untouched. DecryptISO9797M2Padded therefore returns attacker chosen
-// plaintext with a nil error. Valid padding is not integrity.
+// Changing the IV changes the first plaintext block without invalidating padding.
 func TestAESCBCCipher_DecryptISO9797M2PaddedDoesNotDetectModifiedIV(t *testing.T) {
 	cipher, _ := CreateCBCFromKeyString(nistCBCVectors[0].key)
 	iv, _ := hex.DecodeString(nistIV)
 	plainBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
 
-	// Block aligned plaintext, so the padding occupies a whole extra block.
+	// Padding occupies a separate block.
 	cipherBytes, err := cipher.EncryptISO9797M2Padded(plainBytes, iv)
 	if err != nil {
 		t.Fatalf("Did not expect an encryption error but got %q", err)
@@ -404,7 +384,6 @@ func TestAESCBCCipher_DifferentIVsProduceDifferentCiphertext(t *testing.T) {
 		t.Error("Expected the same plaintext under different IVs to produce different ciphertext")
 	}
 
-	// Each ciphertext must still decrypt under its own initialisation vector.
 	for _, testCase := range []struct {
 		cipherBytes []byte
 		iv          []byte
@@ -478,9 +457,7 @@ func TestCreateCBCFromKeyString(t *testing.T) {
 	}
 }
 
-// TestAESCBCCheckValueMatchesGCMCipher asserts that the key check value depends
-// only on the key, so a key imported for CBC use reports the same value as the
-// same key used with GCM.
+// A KCV depends on the key, not the AES mode.
 func TestAESCBCCheckValueMatchesGCMCipher(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("2b7e151628aed2a6abf7158809cf4f3c")
 
