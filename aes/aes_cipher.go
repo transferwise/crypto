@@ -10,7 +10,7 @@
 	limitations under the License.
 */
 
-// Package aes provides wrapper methods on top of the AES GCM cipher for our own usage
+// Package aes provides AES-GCM and AES-CBC helpers.
 package aes
 
 import (
@@ -68,7 +68,17 @@ func (cipher *Cipher) Decrypt(cipherBytes []byte, nonce []byte) ([]byte, error) 
 }
 
 func (c *Cipher) CheckValue() string {
-	block, err := aes.NewCipher(c.KeyBytes)
+	return deriveCheckValue(c.KeyBytes)
+}
+
+func (c *Cipher) VerifyCheckValue(checkValue string) bool {
+	return verifyCheckValue(c.KeyBytes, checkValue)
+}
+
+// deriveCheckValue encrypts a zero block with AES-ECB and returns the first
+// three bytes as hex. It returns an empty string for an invalid key.
+func deriveCheckValue(keyBytes []byte) string {
+	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
 		return ""
 	}
@@ -77,12 +87,12 @@ func (c *Cipher) CheckValue() string {
 	return hex.EncodeToString(cipherBytes[:checkValueBytes])
 }
 
-func (c *Cipher) VerifyCheckValue(checkValue string) bool {
+func verifyCheckValue(keyBytes []byte, checkValue string) bool {
 	if checkValue == "" {
 		return false
 	}
 
-	derivedCheckValue := c.CheckValue()
+	derivedCheckValue := deriveCheckValue(keyBytes)
 	if derivedCheckValue == "" {
 		return false
 	}

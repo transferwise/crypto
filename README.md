@@ -6,6 +6,15 @@ This repo provides a list of utility modules for common crypto operations.
 - encrypt & decrypt methods, the output ciphertext is prefixed with the random nonce.
 - verify the constructed cipher against the check value
 
+### AES-CBC
+
+- factory methods to construct an AES-CBC cipher from the raw key bytes or hex text
+- encrypt & decrypt methods for block-aligned or ISO/IEC 9797-1 method 2 padded input
+- generate a random 16-byte initialisation vector
+- verify the constructed cipher against the check value
+
+AES-CBC does not authenticate ciphertext. Callers must authenticate the initialisation vector and ciphertext separately.
+
 ### DES
 
 - factory methods to construct an DES or 3DES cipher from the raw key bytes or hex text
