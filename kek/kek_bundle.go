@@ -103,6 +103,10 @@ func (b *Bundle) Merge() (des.Cipher, error) {
 
 // MergeTripleDESKey tries to build the result TripleDES key from all the imported components
 func (b *Bundle) MergeTripleDESKey() (des.Cipher, error) {
+	if !b.IsComplete() {
+		return des.Cipher{}, fmt.Errorf("incomplete KEK bundle: expected %d components but got %d", b.Size, len(b.Components))
+	}
+
 	kekBytes := make([]byte, 24)
 	for _, component := range b.Components {
 		kekBytes, _ = xor.XORBytes(kekBytes, component)
@@ -121,6 +125,10 @@ func (b *Bundle) MergeTripleDESKey() (des.Cipher, error) {
 
 // MergeAESKey tries to build the result AES key from all the imported components
 func (b *Bundle) MergeAESKey() (aes.Cipher, error) {
+	if !b.IsComplete() {
+		return aes.Cipher{}, fmt.Errorf("incomplete KEK bundle: expected %d components but got %d", b.Size, len(b.Components))
+	}
+
 	var keyLen int
 	for _, component := range b.Components {
 		if keyLen == 0 {

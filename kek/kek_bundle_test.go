@@ -118,6 +118,23 @@ func TestMergeResultKeySuccess(t *testing.T) {
 	}
 }
 
+func TestMergeTripleDESKeyRejectsIncompleteBundleWithMatchingCheckValue(t *testing.T) {
+	kek := New("visa", 1, 3, "DD1375")
+
+	err := kek.AddComponent(1, "E38FD6D9EF85A892F2FBFDD083A407AE", "DD1375")
+	if err != nil {
+		t.Fatalf("adding component failed with %v", err)
+	}
+
+	_, err = kek.MergeTripleDESKey()
+	if err == nil {
+		t.Fatal("should have failed if the bundle is incomplete")
+	}
+	if err.Error() != "incomplete KEK bundle: expected 3 components but got 1" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 // AES KEK tests
 
 func TestAESAddComponentInvalidValue(t *testing.T) {
@@ -171,6 +188,23 @@ func TestAESMergeAESKeySuccess(t *testing.T) {
 	}
 	if resultKey.CheckValue() != "b1dd24" {
 		t.Fatalf("Expected check value b1dd24 but got %s", resultKey.CheckValue())
+	}
+}
+
+func TestMergeAESKeyRejectsIncompleteBundleWithMatchingCheckValue(t *testing.T) {
+	kek := NewWithKeyType("aes-kek", 1, 3, "B1DD24", KeyTypeAES)
+
+	err := kek.AddComponent(1, "574953452d504f430000000000546263", "B1DD24")
+	if err != nil {
+		t.Fatalf("adding component failed with %v", err)
+	}
+
+	_, err = kek.MergeAESKey()
+	if err == nil {
+		t.Fatal("should have failed if the bundle is incomplete")
+	}
+	if err.Error() != "incomplete KEK bundle: expected 3 components but got 1" {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
