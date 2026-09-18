@@ -18,7 +18,8 @@ AES-CBC does not authenticate ciphertext. Callers must authenticate the initiali
 ### DES
 
 - factory methods to construct an DES or 3DES cipher from the raw key bytes or hex text
-- encrypt & decrypt methods
+- ECB encrypt & decrypt methods
+- CBC decryption with an explicit 8-byte IV, without padding removal or authentication
 - verify the constructed cipher against the check value
 
 ### KEK Bundle
